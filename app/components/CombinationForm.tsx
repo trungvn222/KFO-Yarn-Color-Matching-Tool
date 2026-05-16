@@ -1,0 +1,484 @@
+import { useNavigate, useSubmit, useNavigation, useFetcher } from "@remix-run/react";
+import {
+  Page,
+  Layout,
+  Card,
+  Tag,
+  Button,
+  BlockStack,
+  InlineStack,
+  Text,
+  Box,
+  Banner,
+  Thumbnail,
+  TextField,
+  Modal,
+  Spinner,
+  Combobox,
+  Listbox,
+  AutoSelection,
+} from "@shopify/polaris";
+import { useAppBridge } from "@shopify/app-bridge-react";
+import { useState, useRef } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import type { KfoColor, KfoCombination, KfoTag } from "../types/kfo";
+
+interface ProductRow {
+  variant_id: string;
+  product_name: string;
+  position: number;
+  image_url?: string;
+}
+
+function SortableProductRow({
+  product,
+  idx,
+  onRemove,
+}: {
+  product: ProductRow;
+  idx: number;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: product.variant_id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        borderRadius: 8,
+        border: "1px solid #e1e3e5",
+        padding: "16px",
+        background: isDragging ? "#f6f6f7" : "#fff",
+      }}
+    >
+      <InlineStack align="space-between" blockAlign="center">
+        <InlineStack gap="300" blockAlign="center">
+          <div
+            {...attributes}
+            {...listeners}
+            style={{ cursor: "grab", color: "#8c9196", padding: "4px", touchAction: "none", flexShrink: 0 }}
+            title="Drag to reorder"
+          >
+            ⠿
+          </div>
+          <Thumbnail source={product.image_url || ""} alt={product.product_name} size="small" />
+          <BlockStack gap="050">
+            <Text as="span" variant="bodyMd" fontWeight="semibold">
+              {product.product_name || `Product ${idx + 1}`}
+            </Text>
+            <Text as="span" variant="bodySm" tone="subdued">
+              Variant ID: {product.variant_id}
+            </Text>
+          </BlockStack>
+        </InlineStack>
+        <Button size="slim" tone="critical" onClick={onRemove}>Remove</Button>
+      </InlineStack>
+    </div>
+  );
+}
+
+interface Props {
+  colors: KfoColor[];
+  tags: KfoTag[];
+  combination: KfoCombination | null;
+}
+
+export function CombinationForm({ colors, tags, combination }: Props) {
+  const navigate = useNavigate();
+  const submit = useSubmit();
+  const navigation = useNavigation();
+  const shopify = useAppBridge();
+  const saving = navigation.state !== "idle";
+
+  const [name, setName] = useState(combination?.name ?? "");
+  const [description, setDescription] = useState((combination as any)?.description ?? "");
+  const [imageUrl, setImageUrl] = useState(combination?.image_url ?? "");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [showLibrary, setShowLibrary] = useState(false);
+  const filesFetcher = useFetcher<{ files: string[] }>();
+  const [position, setPosition] = useState(String(combination?.position ?? 0));
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function openLibrary() {
+    setShowLibrary(true);
+    if (filesFetcher.state === "idle" && !filesFetcher.data) {
+      filesFetcher.load("/app/upload");
+    }
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      const token = await shopify.idToken();
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/app/upload", {
+        method: "POST",
+        body: fd,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok && res.headers.get("content-type")?.includes("text/html")) {
+        setUploadError(`Auth error ${res.status} — try reinstalling the app`);
+        return;
+      }
+      const data = await res.json();
+      if (data.url) { setImageUrl(data.url); setUploadError(""); }
+      else setUploadError(data.error ?? "Upload failed");
+    } finally {
+      setImageUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  const [selectedTags, setSelectedTags] = useState<string[]>(combination?.tags ?? []);
+  const [selectedColors, setSelectedColors] = useState<string[]>(combination?.colors ?? []);
+  const [colorInputValue, setColorInputValue] = useState("");
+  const [tagInputValue, setTagInputValue] = useState("");
+  const [products, setProducts] = useState<ProductRow[]>(
+    combination?.products ? combination.products.map((p) => ({ ...p })) : []
+  );
+
+  async function openProductPicker() {
+    const selected = await shopify.resourcePicker({ type: "product", multiple: true });
+    if (!selected || selected.length === 0) return;
+
+    const newRows: ProductRow[] = [];
+    for (const product of selected as any[]) {
+      for (const variant of product.variants) {
+        const variantId = variant.id.replace("gid://shopify/ProductVariant/", "");
+        if (products.some((p) => p.variant_id === variantId)) continue;
+
+        const productName =
+          product.variants.length > 1
+            ? `${product.title} – ${variant.title}`
+            : product.title;
+
+        newRows.push({
+          variant_id: variantId,
+          product_name: productName,
+          position: 0,
+          image_url: product.images?.[0]?.originalSrc ?? "",
+        });
+      }
+    }
+
+    setProducts((prev) => {
+      const next = [...prev, ...newRows];
+      return next.map((p, i) => ({ ...p, position: i + 1 }));
+    });
+  }
+
+  function removeProduct(idx: number) {
+    setProducts((prev) =>
+      prev.filter((_, i) => i !== idx).map((p, i) => ({ ...p, position: i + 1 }))
+    );
+  }
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setProducts((prev) => {
+      const oldIndex = prev.findIndex((p) => p.variant_id === active.id);
+      const newIndex = prev.findIndex((p) => p.variant_id === over.id);
+      return arrayMove(prev, oldIndex, newIndex).map((p, i) => ({ ...p, position: i + 1 }));
+    });
+  }
+
+  function toggleColor(id: string) {
+    setSelectedColors((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  }
+
+  function toggleTag(slug: string) {
+    setSelectedTags((prev) =>
+      prev.includes(slug) ? prev.filter((t) => t !== slug) : [...prev, slug]
+    );
+  }
+
+  function autoName() {
+    const parts = products.map((p) => p.product_name).filter(Boolean);
+    if (parts.length) setName(parts.join(" + "));
+  }
+
+  function handleSave() {
+    submit(
+      { data: JSON.stringify({ name, description, image_url: imageUrl, position: Number(position), tags: selectedTags, colors: selectedColors, products }) },
+      { method: "post" }
+    );
+  }
+
+  return (
+    <Page
+      title={combination ? "Edit combination" : "New combination"}
+      backAction={{ content: "Combinations", onAction: () => navigate("/app") }}
+      primaryAction={{ content: "Save", onAction: handleSave, loading: saving }}
+      secondaryActions={[{ content: "Cancel", onAction: () => navigate("/app") }]}
+    >
+      <Layout>
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="400">
+              <InlineStack gap="200" blockAlign="end">
+                <Box width="100%">
+                  <TextField
+                    label="Combination name"
+                    value={name}
+                    onChange={setName}
+                    autoComplete="off"
+                  />
+                </Box>
+                <Button onClick={autoName}>Auto-name</Button>
+              </InlineStack>
+              <TextField
+                label="Description"
+                value={description}
+                onChange={setDescription}
+                autoComplete="off"
+                multiline={3}
+              />
+              <TextField
+                label="Display position"
+                value={position}
+                onChange={setPosition}
+                autoComplete="off"
+                type="number"
+              />
+            </BlockStack>
+          </Card>
+
+          <Card>
+            <BlockStack gap="400">
+              <InlineStack align="space-between" blockAlign="center">
+                <Text as="h2" variant="headingMd">Products</Text>
+                <Button onClick={openProductPicker}>Add product</Button>
+              </InlineStack>
+              {products.length === 0 && (
+                <Text as="p" variant="bodyMd" tone="subdued">
+                  Add at least 2 products to create a combination.
+                </Text>
+              )}
+
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={products.map((p) => p.variant_id)} strategy={verticalListSortingStrategy}>
+                  {products.map((p, idx) => (
+                    <SortableProductRow
+                      key={p.variant_id}
+                      product={p}
+                      idx={idx}
+                      onRemove={() => removeProduct(idx)}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </BlockStack>
+          </Card>
+        </Layout.Section>
+
+        <Layout.Section variant="oneThird">
+          <BlockStack gap="400">
+          <Card>
+            <BlockStack gap="300">
+              <Text as="h2" variant="headingMd">Thumbnail</Text>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={handleImageUpload}
+              />
+              {imageUrl && (
+                <img
+                  src={imageUrl}
+                  alt="Combination"
+                  style={{ width: "100%", borderRadius: 8, objectFit: "cover", maxHeight: 200 }}
+                />
+              )}
+              <InlineStack gap="200" wrap>
+                <Button
+                  size="slim"
+                  onClick={() => fileInputRef.current?.click()}
+                  loading={imageUploading}
+                >
+                  Upload
+                </Button>
+                <Button size="slim" variant="plain" onClick={openLibrary}>
+                  Browse library
+                </Button>
+                {imageUrl && (
+                  <Button size="slim" variant="plain" tone="critical" onClick={() => setImageUrl("")}>
+                    Remove
+                  </Button>
+                )}
+              </InlineStack>
+              {uploadError && (
+                <Banner tone="critical" onDismiss={() => setUploadError("")}>
+                  {uploadError}
+                </Banner>
+              )}
+            </BlockStack>
+          </Card>
+
+          <Card>
+            <BlockStack gap="300">
+              <Text as="h2" variant="headingMd">Colors</Text>
+              <Combobox
+                allowMultiple
+                activator={
+                  <Combobox.TextField
+                    label="Colors"
+                    labelHidden
+                    value={colorInputValue}
+                    onChange={setColorInputValue}
+                    placeholder="Search colors..."
+                    autoComplete="off"
+                  />
+                }
+              >
+                {colors.filter((c) =>
+                  c.name.toLowerCase().includes(colorInputValue.toLowerCase())
+                ).length > 0 ? (
+                  <Listbox
+                    autoSelection={AutoSelection.None}
+                    onSelect={(id) => { toggleColor(id); setColorInputValue(""); }}
+                  >
+                    {colors
+                      .filter((c) => c.name.toLowerCase().includes(colorInputValue.toLowerCase()))
+                      .map((c) => (
+                        <Listbox.Option key={c.objectID} value={c.objectID} selected={selectedColors.includes(c.objectID)}>
+                          <Listbox.TextOption selected={selectedColors.includes(c.objectID)}>
+                            <InlineStack gap="200" blockAlign="center">
+                              <div style={{ width: 14, height: 14, borderRadius: "50%", background: c.hex, border: "1px solid #ccc", flexShrink: 0 }} />
+                              {c.name}
+                            </InlineStack>
+                          </Listbox.TextOption>
+                        </Listbox.Option>
+                      ))}
+                  </Listbox>
+                ) : null}
+              </Combobox>
+              {selectedColors.length > 0 && (
+                <InlineStack gap="100" wrap>
+                  {selectedColors.map((id) => {
+                    const c = colors.find((x) => x.objectID === id);
+                    return c ? (
+                      <Tag key={id} onRemove={() => toggleColor(id)}>
+                        <InlineStack gap="100" blockAlign="center">
+                          <div style={{ width: 10, height: 10, borderRadius: "50%", background: c.hex, border: "1px solid #ccc" }} />
+                          {c.name}
+                        </InlineStack>
+                      </Tag>
+                    ) : null;
+                  })}
+                </InlineStack>
+              )}
+            </BlockStack>
+          </Card>
+
+          <Card>
+            <BlockStack gap="300">
+              <Text as="h2" variant="headingMd">Tags</Text>
+              <Combobox
+                allowMultiple
+                activator={
+                  <Combobox.TextField
+                    label="Tags"
+                    labelHidden
+                    value={tagInputValue}
+                    onChange={setTagInputValue}
+                    placeholder="Search tags..."
+                    autoComplete="off"
+                  />
+                }
+              >
+                {tags.filter((t) =>
+                  t.name.toLowerCase().includes(tagInputValue.toLowerCase())
+                ).length > 0 ? (
+                  <Listbox
+                    autoSelection={AutoSelection.None}
+                    onSelect={(slug) => { toggleTag(slug); setTagInputValue(""); }}
+                  >
+                    {tags
+                      .filter((t) => t.name.toLowerCase().includes(tagInputValue.toLowerCase()))
+                      .map((t) => (
+                        <Listbox.Option key={t.slug} value={t.slug} selected={selectedTags.includes(t.slug)}>
+                          <Listbox.TextOption selected={selectedTags.includes(t.slug)}>
+                            {t.name}
+                          </Listbox.TextOption>
+                        </Listbox.Option>
+                      ))}
+                  </Listbox>
+                ) : null}
+              </Combobox>
+              {selectedTags.length > 0 && (
+                <InlineStack gap="100" wrap>
+                  {selectedTags.map((slug) => {
+                    const t = tags.find((x) => x.slug === slug);
+                    return (
+                      <Tag key={slug} onRemove={() => toggleTag(slug)}>
+                        {t?.name ?? slug}
+                      </Tag>
+                    );
+                  })}
+                </InlineStack>
+              )}
+            </BlockStack>
+          </Card>
+          </BlockStack>
+        </Layout.Section>
+      </Layout>
+      <Modal
+        open={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        title="Image library"
+        size="large"
+      >
+        <Modal.Section>
+          {filesFetcher.state === "loading" ? (
+            <InlineStack align="center"><Spinner /></InlineStack>
+          ) : filesFetcher.data?.files?.length ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 12 }}>
+              {filesFetcher.data.files.map((url) => (
+                <div
+                  key={url}
+                  onClick={() => { setImageUrl(url); setShowLibrary(false); }}
+                  style={{ cursor: "pointer", borderRadius: 8, overflow: "hidden", border: "2px solid transparent", transition: "border 0.15s" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#008060")}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
+                >
+                  <img src={url} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block" }} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Text as="p" tone="subdued">No images uploaded yet.</Text>
+          )}
+        </Modal.Section>
+      </Modal>
+    </Page>
+  );
+}
