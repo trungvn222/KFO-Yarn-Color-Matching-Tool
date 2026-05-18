@@ -116,6 +116,7 @@ export default function CombinationsIndex() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   function applyFilters(q: string, tags: string[], colors: string[], targetPage = 1, targetPerPage = perPage) {
     const params = new URLSearchParams();
@@ -159,6 +160,26 @@ export default function CombinationsIndex() {
     applyFilters(queryValue, activeTags, activeColors, 1, Number(value));
   }
 
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (queryValue) params.set("q", queryValue);
+      if (activeTags.length) params.set("tags", activeTags.join(","));
+      if (activeColors.length) params.set("colors", activeColors.join(","));
+      const res = await fetch(`/app/export?${params}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `kfo-combinations-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function handleDelete(combination: KfoCombination) {
     if (confirm(`Delete combination "${combination.name}"?`)) {
       submit(
@@ -172,14 +193,18 @@ export default function CombinationsIndex() {
 
   return (
     <Page
+      fullWidth
       title="Combinations"
-      primaryAction={{
-        content: "New combination",
-        url: "/app/combinations/new",
-      }}
+      primaryAction={{ content: "New combination", url: "/app/combinations/new" }}
+      secondaryActions={[{
+        content: exporting ? "Exporting..." : "Export CSV",
+        onAction: handleExport,
+        loading: exporting,
+        disabled: exporting,
+      }]}
     >
       <Layout>
-        <Layout.Section>
+        <Layout.Section variant="fullWidth">
           <Card>
             <BlockStack gap="400">
               <TextField

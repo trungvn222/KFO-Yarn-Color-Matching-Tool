@@ -74,9 +74,9 @@ export default function SettingsPage() {
   const isConfigured = !!(config.appId && config.adminApiKey && config.searchOnlyApiKey);
 
   return (
-    <Page title="Settings">
+    <Page fullWidth title="Settings">
       <Layout>
-        <Layout.Section>
+        <Layout.Section variant="fullWidth">
           {isRequired && !actionData?.ok && (
             <Banner
               tone="warning"
@@ -93,7 +93,7 @@ export default function SettingsPage() {
           )}
         </Layout.Section>
 
-        <Layout.Section>
+        <Layout.Section variant="fullWidth">
           <Card>
             <BlockStack gap="400">
               <InlineStack align="space-between" blockAlign="center">

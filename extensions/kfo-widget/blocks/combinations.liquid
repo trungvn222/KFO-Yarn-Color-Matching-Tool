@@ -1,0 +1,126 @@
+{% if block.settings.algolia_app_id != blank and block.settings.algolia_search_key != blank %}
+  <div
+    id="kfo-widget"
+    data-app-id="{{ block.settings.algolia_app_id | escape }}"
+    data-search-key="{{ block.settings.algolia_search_key | escape }}"
+    data-combinations-index="{{ block.settings.combinations_index | default: 'kfo_combinations' | escape }}"
+    data-colors-index="{{ block.settings.colors_index | default: 'kfo_colors' | escape }}"
+    data-tags-index="{{ block.settings.tags_index | default: 'kfo_tags' | escape }}"
+    data-per-page="{{ block.settings.per_page | default: 12 }}"
+    data-show-search="{{ block.settings.show_search }}"
+    data-show-colors="{{ block.settings.show_color_filter }}"
+    data-color-filter-label="{{ block.settings.color_filter_label | default: 'FILTER BY COLORS:' | escape }}"
+    data-show-tags="{{ block.settings.show_tag_filter }}"
+    data-default-colors="{{ block.settings.default_colors | escape }}"
+    data-default-tags="{{ block.settings.default_tags | escape }}"
+    data-heart-url="{{ 'kfo-heart.svg' | asset_url }}"
+    data-heart-active-url="{{ 'kfo-heart-active.png' | asset_url }}"
+    {{ block.shopify_attributes }}
+  ></div>
+
+  {{ 'kfo-widget.css' | asset_url | stylesheet_tag }}
+  <script src="{{ 'kfo-widget.js' | asset_url }}" defer></script>
+{% else %}
+  <p style="color: #bf0711; padding: 16px; border: 1px solid #bf0811; border-radius: 4px;">
+    KFO Widget: Please configure Algolia credentials in the Theme Editor.
+  </p>
+{% endif %}
+
+{% schema %}
+{
+  "name": "KFO Combinations",
+  "target": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Algolia credentials"
+    },
+    {
+      "type": "text",
+      "id": "algolia_app_id",
+      "label": "Application ID"
+    },
+    {
+      "type": "text",
+      "id": "algolia_search_key",
+      "label": "Search-Only API Key",
+      "info": "Use Search-Only Key — never Admin Key."
+    },
+    {
+      "type": "header",
+      "content": "Index names"
+    },
+    {
+      "type": "text",
+      "id": "combinations_index",
+      "label": "Combinations index",
+      "default": "kfo_combinations"
+    },
+    {
+      "type": "text",
+      "id": "colors_index",
+      "label": "Colors index",
+      "default": "kfo_colors"
+    },
+    {
+      "type": "text",
+      "id": "tags_index",
+      "label": "Tags index",
+      "default": "kfo_tags"
+    },
+    {
+      "type": "range",
+      "id": "per_page",
+      "label": "Combinations per page",
+      "min": 4,
+      "max": 48,
+      "step": 4,
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "Search"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_search",
+      "label": "Show search bar",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Filters"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_color_filter",
+      "label": "Show color filter",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "color_filter_label",
+      "label": "Color filter label",
+      "default": "FILTER BY COLORS:"
+    },
+    {
+      "type": "text",
+      "id": "default_colors",
+      "label": "Default selected colors",
+      "info": "Color IDs separated by commas, e.g. red,navy-blue — copy from Admin > Colors"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_tag_filter",
+      "label": "Show tag filter",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "default_tags",
+      "label": "Default selected tags",
+      "info": "Tag slugs separated by commas, e.g. summer,pastel — copy from Admin > Tags"
+    }
+  ]
+}
+{% endschema %}

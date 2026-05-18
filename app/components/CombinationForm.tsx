@@ -234,12 +234,13 @@ export function CombinationForm({ colors, tags, combination }: Props) {
 
   return (
     <Page
+      fullWidth
       title={combination ? "Edit combination" : "New combination"}
       backAction={{ content: "Combinations", onAction: () => navigate("/app") }}
       primaryAction={{ content: "Save", onAction: handleSave, loading: saving }}
       secondaryActions={[{ content: "Cancel", onAction: () => navigate("/app") }]}
     >
-      <Layout>
+      <Layout gap="600">
         <Layout.Section>
           <Card>
             <BlockStack gap="400">
@@ -271,6 +272,7 @@ export function CombinationForm({ colors, tags, combination }: Props) {
             </BlockStack>
           </Card>
 
+          <Box paddingBlockStart="600">
           <Card>
             <BlockStack gap="400">
               <InlineStack align="space-between" blockAlign="center">
@@ -297,6 +299,7 @@ export function CombinationForm({ colors, tags, combination }: Props) {
               </DndContext>
             </BlockStack>
           </Card>
+          </Box>
         </Layout.Section>
 
         <Layout.Section variant="oneThird">

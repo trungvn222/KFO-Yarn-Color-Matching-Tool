@@ -1,0 +1,7 @@
+api_version = "2026-04"
+
+[[extensions]]
+uid = "a729cab6-15e4-4daf-beec-b8d9db5de734ea2e6cfb"
+type = "theme"
+name = "KFO Combinations Widget"
+handle = "kfo-combinations-widget"
