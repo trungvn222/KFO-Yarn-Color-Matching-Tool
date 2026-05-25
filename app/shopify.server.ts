@@ -13,7 +13,16 @@ const shopify = shopifyApp({
   scopes: process.env.SCOPES?.split(","),
   appUrl: process.env.SHOPIFY_APP_URL || "",
   authPathPrefix: "/auth",
-  sessionStorage: new RedisSessionStorage(process.env.REDIS_URL!),
+  sessionStorage: new RedisSessionStorage(process.env.REDIS_URL!, {
+    sessionKeyPrefix: "shopify_sessions",
+    socket: {
+      connectTimeout: 5000,
+      reconnectStrategy: (retries: number) => {
+        if (retries >= 3) return new Error("Redis unavailable");
+        return Math.min(retries * 300, 1000);
+      },
+    },
+  }),
   isEmbeddedApp: true,
   distribution: AppDistribution.AppStore,
   ...(process.env.SHOP_CUSTOM_DOMAIN
