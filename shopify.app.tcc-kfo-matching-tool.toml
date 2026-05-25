@@ -1,0 +1,23 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "e99c2c95d141e989059ba874392ff2eb"
+name = "TCC-KFO_Matching_Tool"
+application_url = "https://kfo-yarn-color-matching-tool.vercel.app/"
+embedded = true
+
+[webhooks]
+api_version = "2026-04"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_products,write_files"
+optional_scopes = [ ]
+use_legacy_install_flow = true
+
+[auth]
+redirect_urls = [
+  "https://kfo-yarn-color-matching-tool.vercel.app/auth",
+  "https://kfo-yarn-color-matching-tool.vercel.app/auth/callback",
+  "https://kfo-yarn-color-matching-tool.vercel.app/auth/shopify/callback",
+  "https://kfo-yarn-color-matching-tool.vercel.app/api/auth/callback"
+]
