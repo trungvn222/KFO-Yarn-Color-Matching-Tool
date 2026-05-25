@@ -26,11 +26,11 @@ interface KfoCombination {
 }
 
 interface KfoProduct {
-  variant_id: string;
-  product_name: string;
-  handle: string;
+  variant_id: string;   // numeric ID (stripped GID prefix)
+  product_name: string; // "Product" hoặc "Product – Variant" nếu multi-variant
+  handle: string;       // product handle, dùng để fetch live image trên storefront
   position: number;
-  image_url?: string;
+  image_url?: string;   // snapshot lúc save, dùng làm fallback
 }
 ```
 
@@ -66,8 +66,9 @@ interface KfoProduct {
 
 ### Products
 - Chọn sản phẩm qua Shopify Resource Picker (`shopify.resourcePicker({ type: "product", multiple: true })`)
-- Mỗi variant của product thêm thành 1 ProductRow riêng
-- Có thể reorder (↑ ↓) và xóa từng product
+- Mỗi variant của product thêm thành 1 ProductRow riêng; product nhiều variant dùng tên `"Product – Variant"`
+- Lưu `handle` từ Resource Picker response để storefront fetch live image
+- Có thể reorder bằng drag-drop (`@dnd-kit`) và xóa từng product
 - `position` tự cập nhật theo thứ tự trong danh sách
 
 ### Thumbnail
@@ -91,3 +92,23 @@ interface KfoProduct {
 ### Save
 - Submit JSON `{ name, description, image_url, position, tags, colors, products }` via POST
 - Redirect về `/app` sau khi lưu
+
+## Storefront — Modal product images
+
+Khi mở modal, widget fetch live image từ Shopify thay vì dùng `image_url` lưu trong Algolia:
+
+1. Collect unique `handle` từ `combo.products`
+2. Fetch song song `/products/{handle}.js` (Shopify AJAX API)
+3. Build map `variantId → imageUrl`:
+   - Ưu tiên: `variant.featured_image.src`
+   - Fallback: `product.featured_image` (string URL)
+4. Override `image_url` của từng product trước khi render
+
+**Fallback chain** (nếu fetch lỗi hoặc `handle` chưa có):
+```
+variant.featured_image.src → product.featured_image → p.image_url (Algolia) → placeholder div
+```
+
+Trong lúc fetch, modal hiển thị **skeleton** mirror layout thật (left image + right: title, fav, product grid 2 cột) thay vì spinner.
+
+Áp dụng cho cả `kfo-widget.js` (combinations block) và `kfo-favorites.js` (favorites block).

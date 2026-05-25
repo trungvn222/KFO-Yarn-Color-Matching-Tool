@@ -47,6 +47,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       indexSettings: {
         searchableAttributes: ["name", "description"],
         attributesForFaceting: ["tags", "colors"],
+        customRanking: ["asc(position)"],
       },
     });
 

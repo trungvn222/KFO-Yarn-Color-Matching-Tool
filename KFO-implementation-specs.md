@@ -1,6 +1,6 @@
 # KFO Yarn Tool — Implementation Specs
 
-**Cập nhật:** 2026-05-18 (rev 7)  
+**Cập nhật:** 2026-05-18 (rev 8)  
 **Trạng thái:** Đang phát triển — Admin Tool + Storefront Widget hoàn thiện, chưa deploy
 
 ---
@@ -47,6 +47,7 @@ app/
     app.settings.tsx         — Algolia credentials
     app.upload.tsx           — Upload ảnh lên Shopify Files API
     app.import.tsx           — Bulk import combinations từ CSV
+    app.export.tsx           — Export combinations ra CSV (loader-only, trả file download)
     auth.login.tsx           — Shopify OAuth login
     webhooks.*.tsx           — Webhook handlers
 
@@ -57,16 +58,19 @@ extensions/
   kfo-widget/
     shopify.extension.toml   — Extension config (api_version 2026-04, type: theme)
     blocks/
-      combinations.liquid    — App Block: combinations widget
-      favorites.liquid       — App Block: favorites gallery (block riêng, độc lập)
+      combinations.liquid             — App Block: combinations widget
+      favorites.liquid                — App Block: combination favorites gallery
+      product-favorite.liquid         — App Block: heart button cho product page
+      product-favorites-gallery.liquid — App Block: gallery sản phẩm đã save
     locales/
       en.default.json        — Required by Shopify CLI (empty, không dùng i18n)
     assets/
-      kfo-widget.js          — Vanilla JS widget (IIFE, no build step)
-      kfo-favorites.js       — Vanilla JS favorites gallery (IIFE, self-contained)
-      kfo-widget.css         — Shared styles (dùng cho cả 2 block)
-      kfo-heart.svg          — Heart icon (inactive)
-      kfo-heart-active.png   — Heart icon (active)
+      kfo-widget.js               — Vanilla JS widget (IIFE, no build step)
+      kfo-favorites.js            — Vanilla JS combination favorites gallery
+      kfo-product-favorites.js    — Vanilla JS product favorites (heart btn + gallery)
+      kfo-widget.css              — Shared styles (dùng cho tất cả blocks)
+      kfo-heart.svg               — Heart icon (inactive)
+      kfo-heart-active.png        — Heart icon (active)
 
 scripts/
   init-merchant-indexes.mjs  — Tạo merchant indexes + set Algolia settings
@@ -113,6 +117,7 @@ Lưu credentials của từng merchant. Key = `shop` domain.
     {
       "variant_id": "123456",
       "product_name": "Merino – Red",
+      "handle": "merino-wool",
       "position": 1,
       "image_url": "https://..."
     }
@@ -123,7 +128,9 @@ Lưu credentials của từng merchant. Key = `shop` domain.
 > **Khác với spec gốc:**
 > - `colors` là array `objectID` của `kfo_colors` (không phải `color_slugs`)
 > - `tags` là array `slug` của `kfo_tags`
-> - `products[]` không lưu `color_name`, `color_hex` — chỉ lưu `variant_id`, `product_name`, `position`, `image_url`
+> - `products[]` không lưu `color_name`, `color_hex` — chỉ lưu `variant_id`, `product_name`, `handle`, `position`, `image_url`
+> - `handle`: lấy từ Shopify Resource Picker, dùng để fetch live image trên storefront
+> - `image_url`: snapshot lúc save — chỉ dùng làm fallback nếu fetch Shopify lỗi
 > - Không có `primary_variant_id`
 
 ### 3.3 `kfo_colors`
@@ -165,11 +172,14 @@ Lưu credentials của từng merchant. Key = `shop` domain.
 {
   searchableAttributes: ["name", "description"],
   attributesForFaceting: ["tags", "colors"],
+  customRanking: ["asc(position)"],
 }
 ```
 
-> **Để filter hoạt động:** `tags` và `colors` phải nằm trong `attributesForFaceting`.  
-> Nếu index đã tồn tại mà chưa có settings, chạy: `node scripts/set-index-settings.mjs`
+> **Filter:** `tags` và `colors` phải nằm trong `attributesForFaceting`.  
+> **Sort:** `customRanking: ["asc(position)"]` — sau khi sort theo relevance, kết quả đồng hạng sắp xếp tăng dần theo `position`. Combination `position: 1` hiện trước `position: 2`.  
+> Merchant đã cài trước đây cần vào **Settings → Save** lại một lần để apply.  
+> Nếu cần áp lại thủ công: `node scripts/set-index-settings.mjs`
 
 ---
 
@@ -179,7 +189,7 @@ Lưu credentials của từng merchant. Key = `shop` domain.
 - Khi Save:
   1. Ghi credentials vào `kfo_settings` (app Algolia)
   2. Tạo merchant indexes (`kfo_combinations`, `kfo_colors`, `kfo_tags`) nếu chưa có
-  3. Gọi `setSettings` trên `kfo_combinations` với `searchableAttributes` + `attributesForFaceting`
+  3. Gọi `setSettings` trên `kfo_combinations` với `searchableAttributes` + `attributesForFaceting` + `customRanking`
 - Guard: mọi route admin redirect về `/app/settings?required=1` nếu chưa config
 
 ---
@@ -265,6 +275,7 @@ facetFilters: [
 
 ### UI
 
+- **Page actions:** `New combination` (primary) + `Export CSV` (secondary)
 - **Search:** `TextField` debounce 300ms
 - **Filters:** 2 nút `Popover` (Color + Tag), mỗi cái chứa `ChoiceList allowMultiple`
   - Button hiện count khi active: `Color (2)`, `Tag (1)`
@@ -274,6 +285,16 @@ facetFilters: [
   - Colors: hiện tối đa 5 dot màu (16px), hover = title tooltip, `+N` nếu > 5
 - **Pagination:** `Pagination` component + label `page / nbPages`
 - **Rows per page:** `Select` (10/20/50/100), reset về trang 1 khi đổi
+
+### Export CSV (`app/routes/app.export.tsx`)
+
+- Loader-only route, trả `Response` với `Content-Type: text/csv`
+- Đọc cùng params `q`, `tags`, `colors` như index → fetch tất cả matching (hitsPerPage: 1000)
+- Cũng fetch `kfo_colors` để map `objectID → name` cho cột `colors`
+- CSV columns: `name, description, position, image_url, colors (pipe-sep names), tags (pipe-sep slugs), variant_ids (pipe-sep)`
+- Format khớp với Import CSV → export → edit → import lại được
+- Client trigger: `fetch('/app/export?...')` → blob → `URL.createObjectURL` → `<a download>` click
+- Filename: `kfo-combinations-YYYY-MM-DD.csv`
 
 ---
 
@@ -628,6 +649,45 @@ toggleFav(id) // thêm/xóa khỏi array, persist, dispatch 'kfo:favorites-chang
 - Zoom button → lightbox: `div.kfo-lightbox` append to `document.body`, có nút ✕ + click-outside để đóng
 - Modal close: click ✕ hoặc click overlay background
 
+**Modal — Live product images:**
+
+Khi mở modal, widget fetch ảnh live từ Shopify thay vì dùng `image_url` snapshot trong Algolia:
+
+```js
+async function fetchVariantImages(products) {
+  // collect unique handles, fetch /products/{handle}.js song song
+  // build map: variantId → imageUrl
+}
+```
+
+Fallback chain:
+```
+variant.featured_image.src → product.featured_image (string URL) → p.image_url (Algolia) → placeholder div
+```
+
+- Backward compatible: combination cũ không có `handle` → fetch bỏ qua → dùng `p.image_url`
+- Áp dụng cho cả `kfo-widget.js` và `kfo-favorites.js`
+
+**Modal — Skeleton loading:**
+
+Trong lúc `fetchVariantImages` đang chạy, modal hiển thị skeleton mirror layout thật:
+
+```
+┌──────────────────┬──────────────────────────┐
+│  [shimmer block] │  [title bar shimmer]     │
+│  (45% width)     │  [fav bar shimmer]       │
+│                  │  ┌────────┐ ┌────────┐  │
+│                  │  │shimmer │ │shimmer │  │
+│                  │  │ (1:1) │ │ (1:1) │  │
+│                  │  └────────┘ └────────┘  │
+│                  │  [btn shimmer][btn shim] │
+└──────────────────┴──────────────────────────┘
+```
+
+- Animation: `linear-gradient` shimmer 1.4s infinite (`#f0f0f0 → #e8e8e8 → #f0f0f0`)
+- CSS classes: `.kfo-modal-skeleton`, `.kfo-skel`, `.kfo-skel-left`, `.kfo-skel-right`, `.kfo-skel-title`, `.kfo-skel-fav`, `.kfo-skel-products`, `.kfo-skel-product-img`, `.kfo-skel-product-btn`
+- Responsive 768px: skeleton đổi sang column layout, `.kfo-skel-left` cao 220px
+
 **Add to Cart:**
 ```js
 POST /cart/add.js
@@ -651,9 +711,68 @@ body: { items: [{ id: numericVariantId, quantity: 1 }] }
 | Modal fav btn, desc | 14px |
 | ADD TO CART btn, cart message | 18px |
 
+### 13.5 Product Favorites (`blocks/product-favorite.liquid` + `blocks/product-favorites-gallery.liquid` + `assets/kfo-product-favorites.js`)
+
+**Mục đích:** Cho phép customer lưu Shopify products (không phải combinations) vào danh sách yêu thích.
+
+**2 blocks:**
+
+| Block | Đặt ở | Chức năng |
+|---|---|---|
+| `product-favorite.liquid` | Product page template | Nút heart toggle favorite cho product hiện tại |
+| `product-favorites-gallery.liquid` | Bất kỳ page nào | Gallery grid các products đã save |
+
+**`product-favorite.liquid`** — inject product data từ Liquid vào `data-*`:
+```liquid
+data-handle="{{ product.handle }}"
+data-product-id="{{ product.id }}"
+data-title="{{ product.title }}"
+data-image="{{ product.featured_image | image_url: width: 400 }}"
+```
+Không cần Algolia credentials. Schema chỉ có `paragraph` hướng dẫn.
+
+**`product-favorites-gallery.liquid`** — setting duy nhất: `per_page` (range 4–48, default 12).
+
+**`kfo-product-favorites.js` — flow:**
+
+_Heart button (product page):_
+1. Đọc `handle` từ `data-handle`
+2. Render `<button class="kfo-product-fav-btn">` với icon từ localStorage state
+3. Click → `toggleFav(handle)` → swap icon + aria-label
+
+_Gallery:_
+1. Đọc `handles[]` từ `localStorage['kfo_product_favorites']`
+2. Nếu rỗng → empty state
+3. Paginate client-side (slice handles theo `page` + `perPage`)
+4. Fetch `/products/{handle}.js` song song cho page hiện tại
+5. Render grid: ảnh + title + ADD TO CART (first variant) / "Unavailable"
+6. Click card → navigate đến `/products/{handle}`
+7. ADD TO CART → `POST /cart/add.js` → dispatch `cart:refresh` + `theme:cart:open`
+8. Unfavorite trong gallery → remove card ngay, không reload
+
+**localStorage:**
+```js
+// key: 'kfo_product_favorites'
+// value: string[] — mảng product handles
+```
+
+**Realtime sync:**
+```
+toggleFav(handle) → localStorage + dispatchEvent('kfo:product-favorites-changed')
+
+product-favorite block:   window.on('kfo:product-favorites-changed') → sync icon trên product page
+product-favorites-gallery: window.on('kfo:product-favorites-changed') → re-render từ trang 1
+```
+
+**CSS additions (`kfo-widget.css`):**
+- `.kfo-product-fav-btn` — standalone inline button, `display: inline-flex`, hover scale 1.15
+- `.kfo-pfav-unavailable` — 14px, `#9ca3af`, thay ADD TO CART khi product không có variants
+
+---
+
 ### 13.3 CSS (`assets/kfo-widget.css`)
 
-- Dùng chung cho **cả 2 block** (`kfo-widget.js` + `kfo-favorites.js`)
+- Dùng chung cho **tất cả blocks** (`kfo-widget.js`, `kfo-favorites.js`, `kfo-product-favorites.js`)
 - `#kfo-widget { width: 100%; box-sizing: border-box; }` — không padding, không max-width
 - Modal body dùng **class** `.kfo-modal-body` (không phải ID) để cả 2 modal dùng chung style: `display: flex; width: 100%`
 - Modal: `position: fixed`, `z-index: 9999`, max-width 820px, max-height 90vh, flex row (left 45% + right flex:1)
@@ -822,9 +941,12 @@ const sensors = useSensors(useSensor(PointerSensor));
 | **Deploy** | `vercel.json` đã có, chưa push GitHub + set env vars trên Vercel |
 | ~~Sync Products~~ | ~~Route `/app/sync`~~ — **Removed**: products chọn trực tiếp qua Resource Picker, không cần sync riêng |
 | ~~CSV Import~~ | ~~Bulk import combinations~~ — **Done**: `app.import.tsx`, DropZone + client-side validate + preview + batch saveObjects (§12) |
+| ~~CSV Export~~ | ~~Export combinations~~ — **Done**: `app.export.tsx`, loader trả file download, filter-aware, format khớp với import (§8) |
+| ~~Sort by position~~ | ~~Chưa có sort~~ — **Done**: `customRanking: ["asc(position)"]` trong Algolia settings (§4) |
 | Color/Tag rename → objectID drift | Tạo "Red" → objectID = "red". Đổi tên thành "Rouge" → objectID vẫn là "red". Không ảnh hưởng chức năng. |
 | ~~Add to Cart~~ | ~~Chưa có nút cart~~ — **Done**: `POST /cart/add.js`, error banner, cart:refresh event |
 | ~~Favorites toggle~~ | ~~Chưa implement~~ — **Done** (xem §16.1) |
+| ~~Product Favorites~~ | ~~Chưa implement~~ — **Done**: `product-favorite.liquid` (heart btn trên product page) + `product-favorites-gallery.liquid` + `kfo-product-favorites.js`, localStorage key `kfo_product_favorites` (xem §13.5) |
 
 ### 16.1 Favorites toggle — chi tiết
 

@@ -1,12 +1,14 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigation, useFetcher } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigation, useFetcher, useRevalidator } from "@remix-run/react";
 import { useState, useRef, useEffect } from "react";
+import Papa from "papaparse";
 import {
   Page,
   Layout,
   Card,
   DataTable,
+  Badge,
   Button,
   Modal,
   FormLayout,
@@ -96,6 +98,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ count: res.nbHits ?? 0 });
   }
 
+  if (intent === "import") {
+    const raw = formData.get("rows") as string;
+    const rows = JSON.parse(raw) as { name: string; hex: string; description: string }[];
+    const objects = rows.map((row) => ({
+      objectID: row.name.toLowerCase().replace(/\s+/g, "-"),
+      name: row.name,
+      hex: row.hex || "#cccccc",
+      description: row.description || "",
+      image_url: "",
+    }));
+    await Promise.all(
+      objects.map((obj) => client.saveObject({ indexName: INDEXES.colors, body: obj }))
+    );
+    return json({ ok: true, imported: objects.length });
+  }
+
   if (intent === "delete") {
     const objectID = formData.get("objectID") as string;
 
@@ -125,6 +143,7 @@ export default function ColorsPage() {
   const { colors, allIds, q, page, perPage, nbPages, nbHits } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigation = useNavigation();
+  const revalidator = useRevalidator();
   const shopify = useAppBridge();
   const loading = navigation.state !== "idle";
 
@@ -164,6 +183,13 @@ export default function ColorsPage() {
   const filesFetcher = useFetcher<{ files: string[] }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Import CSV state
+  const [showImport, setShowImport] = useState(false);
+  const [importRows, setImportRows] = useState<{ name: string; hex: string; description: string }[]>([]);
+  const [importError, setImportError] = useState("");
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const importFetcher = useFetcher<{ ok: boolean; imported: number }>();
+
   // Delete flow
   const [deletingColor, setDeletingColor] = useState<KfoColor | null>(null);
   const [deletePhase, setDeletePhase] = useState<"checking" | "confirming" | "deleting" | "done">("checking");
@@ -199,6 +225,59 @@ export default function ColorsPage() {
       }, 600);
     }
   }, [deleteFetcher.state, deleteFetcher.data, deletePhase]);
+
+  useEffect(() => {
+    if (importFetcher.state === "idle" && importFetcher.data?.ok) {
+      shopify.toast.show(`Imported ${importFetcher.data.imported} color${importFetcher.data.imported !== 1 ? "s" : ""}`);
+      setShowImport(false);
+      setImportRows([]);
+      revalidator.revalidate();
+    }
+  }, [importFetcher.state, importFetcher.data]);
+
+  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const rows = (results.data as any[])
+          .map((row) => ({
+            name: String(row.name || row.Name || "").trim(),
+            hex: String(row.hex || row.Hex || row.color || row.Color || "").trim(),
+            description: String(row.description || row.Description || "").trim(),
+          }))
+          .filter((r) => r.name);
+        if (!rows.length) {
+          setImportError("No valid rows found. Make sure your CSV has a 'name' column.");
+          return;
+        }
+        setImportError("");
+        setImportRows(rows);
+      },
+      error: (err: Error) => setImportError(err.message),
+    });
+    if (csvInputRef.current) csvInputRef.current.value = "";
+  }
+
+  function downloadTemplate() {
+    const csv = Papa.unparse([{ name: "Example Red", hex: "#FF0000", description: "A vibrant red" }]);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "colors-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImport() {
+    importFetcher.submit(
+      { intent: "import", rows: JSON.stringify(importRows) },
+      { method: "post" }
+    );
+  }
 
   function handleDeleteClick(color: KfoColor) {
     setDeletingColor(color);
@@ -305,6 +384,9 @@ export default function ColorsPage() {
       fullWidth
       title="Colors"
       primaryAction={{ content: "Add color", onAction: openCreate }}
+      secondaryActions={[
+        { content: "Import CSV", onAction: () => { setShowImport(true); setImportRows([]); setImportError(""); } },
+      ]}
     >
       <Layout>
         <Layout.Section variant="fullWidth">
@@ -527,6 +609,72 @@ export default function ColorsPage() {
           ) : (
             <Text as="p" tone="subdued">No images uploaded yet.</Text>
           )}
+        </Modal.Section>
+      </Modal>
+      <input
+        ref={csvInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        style={{ display: "none" }}
+        onChange={handleCsvFile}
+      />
+
+      <Modal
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        title="Import colors from CSV"
+        size="large"
+        primaryAction={
+          importRows.length > 0
+            ? {
+                content: `Import ${importRows.length} color${importRows.length !== 1 ? "s" : ""}`,
+                onAction: handleImport,
+                loading: importFetcher.state !== "idle",
+              }
+            : undefined
+        }
+        secondaryActions={[{ content: "Cancel", onAction: () => setShowImport(false) }]}
+      >
+        <Modal.Section>
+          <BlockStack gap="400">
+            <InlineStack gap="300" blockAlign="center">
+              <Button onClick={() => csvInputRef.current?.click()}>Choose CSV file</Button>
+              <Button variant="plain" onClick={downloadTemplate}>Download template</Button>
+            </InlineStack>
+
+            <Text as="p" variant="bodySm" tone="subdued">
+              CSV must have a <strong>name</strong> column. Optional: <strong>hex</strong>, <strong>description</strong>.
+              Existing colors with the same ID will be overwritten.
+            </Text>
+
+            {importError && (
+              <Banner tone="critical" onDismiss={() => setImportError("")}>{importError}</Banner>
+            )}
+
+            {importRows.length > 0 && (
+              <DataTable
+                columnContentTypes={["text", "text", "text", "text"]}
+                headings={["Name", "Hex", "Description", "Status"]}
+                rows={importRows.map((r) => {
+                  const id = r.name.toLowerCase().replace(/\s+/g, "-");
+                  const isOverwrite = allIds.includes(id);
+                  return [
+                    r.name,
+                    <InlineStack gap="200" blockAlign="center">
+                      {r.hex && (
+                        <div style={{ backgroundColor: r.hex, width: 16, height: 16, borderRadius: 2, border: "1px solid #ccc", flexShrink: 0 }} />
+                      )}
+                      <Text as="span" variant="bodySm">{r.hex || "—"}</Text>
+                    </InlineStack>,
+                    r.description || "—",
+                    isOverwrite
+                      ? <Badge tone="warning">Will overwrite</Badge>
+                      : <Badge tone="success">New</Badge>,
+                  ];
+                })}
+              />
+            )}
+          </BlockStack>
         </Modal.Section>
       </Modal>
     </Page>

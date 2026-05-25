@@ -40,14 +40,17 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     );
     const gqlData = await res.json();
     const imageMap: Record<string, string> = {};
+    const foundIds = new Set<string>();
     for (const node of gqlData.data?.nodes ?? []) {
       if (!node?.id) continue;
       const variantId = node.id.replace("gid://shopify/ProductVariant/", "");
       imageMap[variantId] = node.image?.url ?? node.product?.featuredImage?.url ?? "";
+      foundIds.add(variantId);
     }
     combination.products = combination.products.map((p) => ({
       ...p,
       image_url: imageMap[p.variant_id] ?? p.image_url ?? "",
+      deleted: !foundIds.has(p.variant_id),
     }));
   }
 

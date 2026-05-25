@@ -4,6 +4,7 @@ import {
   Layout,
   Card,
   Tag,
+  Badge,
   Button,
   BlockStack,
   InlineStack,
@@ -40,8 +41,10 @@ import type { KfoColor, KfoCombination, KfoTag } from "../types/kfo";
 interface ProductRow {
   variant_id: string;
   product_name: string;
+  handle: string;
   position: number;
   image_url?: string;
+  deleted?: boolean;
 }
 
 function SortableProductRow({
@@ -82,9 +85,14 @@ function SortableProductRow({
           </div>
           <Thumbnail source={product.image_url || ""} alt={product.product_name} size="small" />
           <BlockStack gap="050">
-            <Text as="span" variant="bodyMd" fontWeight="semibold">
-              {product.product_name || `Product ${idx + 1}`}
-            </Text>
+            <InlineStack gap="200" blockAlign="center">
+              <Text as="span" variant="bodyMd" fontWeight="semibold">
+                {product.product_name || `Product ${idx + 1}`}
+              </Text>
+              {product.deleted && (
+                <Badge tone="critical">Product deleted</Badge>
+              )}
+            </InlineStack>
             <Text as="span" variant="bodySm" tone="subdued">
               Variant ID: {product.variant_id}
             </Text>
@@ -178,6 +186,7 @@ export function CombinationForm({ colors, tags, combination }: Props) {
         newRows.push({
           variant_id: variantId,
           product_name: productName,
+          handle: product.handle ?? "",
           position: 0,
           image_url: product.images?.[0]?.originalSrc ?? "",
         });

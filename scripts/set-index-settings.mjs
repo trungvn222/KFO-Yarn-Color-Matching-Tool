@@ -21,6 +21,7 @@ await merchantClient.setSettings({
   indexSettings: {
     searchableAttributes: ["name", "description"],
     attributesForFaceting: ["tags", "colors"],
+    customRanking: ["asc(position)"],
   },
 });
 console.log("✓ Set index settings on kfo_combinations");

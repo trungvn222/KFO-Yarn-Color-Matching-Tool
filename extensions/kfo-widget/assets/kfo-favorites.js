@@ -135,9 +135,53 @@
       });
     }
 
+    // --- fetch live variant images from Shopify AJAX API ---
+    async function fetchVariantImages(products) {
+      const handles = [...new Set(products.map(p => p.handle).filter(Boolean))];
+      if (!handles.length) return {};
+      const map = {};
+      await Promise.all(handles.map(async (handle) => {
+        try {
+          const res = await fetch(`/products/${handle}.js`);
+          if (!res.ok) return;
+          const data = await res.json();
+          const productImg = data.featured_image || '';
+          for (const v of data.variants) {
+            map[String(v.id)] = v.featured_image?.src || productImg || '';
+          }
+        } catch {}
+      }));
+      return map;
+    }
+
     // --- Modal ---
-    function openModal(combo) {
+    async function openModal(combo) {
+      const overlay = document.getElementById('kfo-fav-modal-overlay');
       const body = document.getElementById('kfo-fav-modal-body');
+
+      body.innerHTML = `
+        <div class="kfo-modal-skeleton">
+          <div class="kfo-skel kfo-skel-left"></div>
+          <div class="kfo-skel-right">
+            <div class="kfo-skel kfo-skel-title"></div>
+            <div class="kfo-skel kfo-skel-fav"></div>
+            <div class="kfo-skel-products">
+              <div class="kfo-skel-product"><div class="kfo-skel kfo-skel-product-img"></div><div class="kfo-skel kfo-skel-product-btn"></div></div>
+              <div class="kfo-skel-product"><div class="kfo-skel kfo-skel-product-img"></div><div class="kfo-skel kfo-skel-product-btn"></div></div>
+              <div class="kfo-skel-product"><div class="kfo-skel kfo-skel-product-img"></div><div class="kfo-skel kfo-skel-product-btn"></div></div>
+              <div class="kfo-skel-product"><div class="kfo-skel kfo-skel-product-img"></div><div class="kfo-skel kfo-skel-product-btn"></div></div>
+            </div>
+          </div>
+        </div>`;
+      overlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      const imageMap = await fetchVariantImages(combo.products || []);
+      const products = (combo.products || []).map(p => ({
+        ...p,
+        image_url: imageMap[String(p.variant_id)] || p.image_url || '',
+      }));
+
       const favActive = isFav(combo.objectID);
 
       body.innerHTML = `
@@ -165,7 +209,7 @@
           ${combo.description ? `<p class="kfo-modal-desc">${combo.description}</p>` : ''}
           <p class="kfo-cart-msg" id="kfo-fav-cart-msg"></p>
           <div class="kfo-modal-products-grid">
-            ${(combo.products || []).map(p => `
+            ${products.map(p => `
               <div class="kfo-modal-product">
                 ${p.image_url
                   ? `<img src="${p.image_url}" alt="${p.product_name}" class="kfo-modal-product-img" />`
@@ -262,8 +306,6 @@
         });
       }
 
-      document.getElementById('kfo-fav-modal-overlay').classList.add('open');
-      document.body.style.overflow = 'hidden';
     }
 
     function closeModal() {
