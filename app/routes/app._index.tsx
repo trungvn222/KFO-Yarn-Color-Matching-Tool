@@ -127,7 +127,6 @@ export default function CombinationsIndex() {
 
   useEffect(() => {
     if (newFetcher.state === "idle" && newFetcher.data?.ok) {
-      setShowNewModal(false);
       revalidator.revalidate();
     }
   }, [newFetcher.state, newFetcher.data]);
@@ -140,6 +139,7 @@ export default function CombinationsIndex() {
   function handleModalSave() {
     const data = formRef.current?.getData();
     if (!data) return;
+    setShowNewModal(false);
     newFetcher.submit(
       { data: JSON.stringify(data), _modal: "1" },
       { method: "post", action: "/app/combinations/new" },
@@ -160,8 +160,6 @@ export default function CombinationsIndex() {
     if (editSaveFetcher.state === "idle" && editSaveFetcher.data?.ok) {
       const updated = editSaveFetcher.data.combination;
       if (updated) setOverrides((prev) => ({ ...prev, [updated.objectID]: updated }));
-      setShowEditModal(false);
-      setEditingId(null);
     }
   }, [editSaveFetcher.state, editSaveFetcher.data]);
 
@@ -175,6 +173,10 @@ export default function CombinationsIndex() {
   function handleEditModalSave() {
     const data = editFormRef.current?.getData();
     if (!data || !editingId) return;
+    const optimistic = { objectID: editingId, ...data } as KfoCombination;
+    setOverrides((prev) => ({ ...prev, [editingId]: optimistic }));
+    setShowEditModal(false);
+    setEditingId(null);
     editSaveFetcher.submit(
       { data: JSON.stringify(data), _modal: "1" },
       { method: "post", action: `/app/combinations/${editingId}/edit` },

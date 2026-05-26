@@ -525,7 +525,7 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
   );
 
   if (mode === "modal") {
-    return <Box padding="400">{formContent}</Box>;
+    return <Box paddingBlock="400">{formContent}</Box>;
   }
 
   return (
