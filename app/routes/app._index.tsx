@@ -37,8 +37,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const config = await requireMerchantConfig(session.shop);
   if (!config) throw redirect("/app/settings?required=1");
 
-  console.log("session", session);
-
   const url = new URL(request.url);
   const q = url.searchParams.get("q") || "";
   const tagParams = url.searchParams.get("tags") || "";
@@ -160,9 +158,10 @@ export default function CombinationsIndex() {
 
   useEffect(() => {
     if (editSaveFetcher.state === "idle" && editSaveFetcher.data?.ok) {
-      setShowEditModal(false);
       const updated = editSaveFetcher.data.combination;
       if (updated) setOverrides((prev) => ({ ...prev, [updated.objectID]: updated }));
+      setShowEditModal(false);
+      setEditingId(null);
     }
   }, [editSaveFetcher.state, editSaveFetcher.data]);
 
@@ -365,7 +364,7 @@ export default function CombinationsIndex() {
                 heading="No combinations yet"
                 action={{
                   content: "Create combination",
-                  url: "/app/combinations/new",
+                  onAction: openNewModal,
                 }}
                 image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
               >
@@ -485,29 +484,35 @@ export default function CombinationsIndex() {
 
       <Modal
         open={showEditModal}
-        onClose={() => setShowEditModal(false)}
+        onClose={() => { setShowEditModal(false); setEditingId(null); }}
         title="Edit combination"
         size="fullScreen"
         primaryAction={{ content: "Save", onAction: handleEditModalSave, loading: editSaving }}
-        secondaryActions={[{ content: "Cancel", onAction: () => setShowEditModal(false) }]}
+        secondaryActions={[{ content: "Cancel", onAction: () => { setShowEditModal(false); setEditingId(null); } }]}
       >
         <Modal.Section flush>
-          {editLoadFetcher.state !== "idle" ? (
-            <Box padding="400">
-              <InlineStack align="center"><Spinner size="large" /></InlineStack>
-            </Box>
-          ) : editLoadFetcher.data?.combination ? (
-            <CombinationForm
-              key={editModalKey}
-              ref={editFormRef}
-              mode="modal"
-              colors={colors}
-              tags={tags}
-              combination={editLoadFetcher.data.combination}
-              saving={editSaving}
-              onCancel={() => setShowEditModal(false)}
-            />
-          ) : null}
+          {(() => {
+            const loaded = editLoadFetcher.state === "idle"
+              && editLoadFetcher.data?.combination?.objectID === editingId
+              ? editLoadFetcher.data.combination
+              : null;
+            return loaded ? (
+              <CombinationForm
+                key={editModalKey}
+                ref={editFormRef}
+                mode="modal"
+                colors={colors}
+                tags={tags}
+                combination={loaded}
+                saving={editSaving}
+                onCancel={() => setShowEditModal(false)}
+              />
+            ) : (
+              <Box padding="400">
+                <InlineStack align="center"><Spinner size="large" /></InlineStack>
+              </Box>
+            );
+          })()}
         </Modal.Section>
       </Modal>
     </Page>
