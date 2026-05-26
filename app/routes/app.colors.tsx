@@ -423,6 +423,7 @@ export default function ColorsPage() {
       primaryAction={{ content: "Add color", onAction: openCreate }}
       secondaryActions={[
         { content: "Import CSV", onAction: () => { setShowImport(true); setImportRows([]); setImportError(""); } },
+        { content: "Refresh", onAction: () => revalidator.revalidate(), loading: revalidator.state !== "idle" },
       ]}
     >
       <Layout>

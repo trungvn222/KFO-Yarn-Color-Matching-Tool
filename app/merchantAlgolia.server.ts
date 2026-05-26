@@ -8,6 +8,7 @@ const mockClient: AlgoliaClient = {
   saveObject: async () => ({ taskID: 0, objectID: "mock" } as any),
   deleteObject: async () => ({} as any),
   getObject: async () => ({} as any),
+  waitForTask: async () => ({} as any),
 } as unknown as AlgoliaClient;
 
 export async function getMerchantAlgoliaClient(shop: string): Promise<AlgoliaClient> {

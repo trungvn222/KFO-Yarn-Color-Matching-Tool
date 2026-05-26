@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigation, Link } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigation, useRevalidator, useFetcher } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -21,8 +21,10 @@ import {
   TextField,
   EmptyState,
   Spinner,
+  Modal,
 } from "@shopify/polaris";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { CombinationForm, type CombinationFormHandle } from "../components/CombinationForm";
 import { authenticate } from "../shopify.server";
 import { INDEXES } from "../algolia.server";
 import { getMerchantAlgoliaClient } from "../merchantAlgolia.server";
@@ -108,6 +110,7 @@ export default function CombinationsIndex() {
   const { combinations, tags, colors, selectedTagSlugs, selectedColorIds, q, page, perPage, nbPages, nbHits } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigation = useNavigation();
+  const revalidator = useRevalidator();
   const loading = navigation.state !== "idle";
 
   const [activeTags, setActiveTags] = useState<string[]>(selectedTagSlugs);
@@ -117,6 +120,69 @@ export default function CombinationsIndex() {
   const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [modalKey, setModalKey] = useState(0);
+  const formRef = useRef<CombinationFormHandle>(null);
+  const newFetcher = useFetcher<{ ok: boolean }>();
+  const newSaving = newFetcher.state !== "idle";
+
+  useEffect(() => {
+    if (newFetcher.state === "idle" && newFetcher.data?.ok) {
+      setShowNewModal(false);
+      revalidator.revalidate();
+    }
+  }, [newFetcher.state, newFetcher.data]);
+
+  function openNewModal() {
+    setModalKey((k) => k + 1);
+    setShowNewModal(true);
+  }
+
+  function handleModalSave() {
+    const data = formRef.current?.getData();
+    if (!data) return;
+    newFetcher.submit(
+      { data: JSON.stringify(data), _modal: "1" },
+      { method: "post", action: "/app/combinations/new" },
+    );
+  }
+
+  // Edit modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editModalKey, setEditModalKey] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editFormRef = useRef<CombinationFormHandle>(null);
+  const editLoadFetcher = useFetcher<{ combination: KfoCombination }>();
+  const editSaveFetcher = useFetcher<{ ok: boolean; combination: KfoCombination }>();
+  const editSaving = editSaveFetcher.state !== "idle";
+  const [overrides, setOverrides] = useState<Record<string, KfoCombination>>({});
+
+  useEffect(() => {
+    if (editSaveFetcher.state === "idle" && editSaveFetcher.data?.ok) {
+      setShowEditModal(false);
+      const updated = editSaveFetcher.data.combination;
+      if (updated) setOverrides((prev) => ({ ...prev, [updated.objectID]: updated }));
+    }
+  }, [editSaveFetcher.state, editSaveFetcher.data]);
+
+  function openEditModal(combination: KfoCombination) {
+    setEditingId(combination.objectID);
+    setEditModalKey((k) => k + 1);
+    setShowEditModal(true);
+    editLoadFetcher.load(`/app/combinations/${combination.objectID}/edit`);
+  }
+
+  function handleEditModalSave() {
+    const data = editFormRef.current?.getData();
+    if (!data || !editingId) return;
+    editSaveFetcher.submit(
+      { data: JSON.stringify(data), _modal: "1" },
+      { method: "post", action: `/app/combinations/${editingId}/edit` },
+    );
+  }
+
+  const displayCombinations = combinations.map((c: KfoCombination) => overrides[c.objectID] ?? c);
 
   function applyFilters(q: string, tags: string[], colors: string[], targetPage = 1, targetPerPage = perPage) {
     const params = new URLSearchParams();
@@ -195,13 +261,20 @@ export default function CombinationsIndex() {
     <Page
       fullWidth
       title="Combinations"
-      primaryAction={{ content: "New combination", url: "/app/combinations/new" }}
-      secondaryActions={[{
-        content: exporting ? "Exporting..." : "Export CSV",
-        onAction: handleExport,
-        loading: exporting,
-        disabled: exporting,
-      }]}
+      primaryAction={{ content: "New combination", onAction: openNewModal }}
+      secondaryActions={[
+        {
+          content: exporting ? "Exporting..." : "Export CSV",
+          onAction: handleExport,
+          loading: exporting,
+          disabled: exporting,
+        },
+        {
+          content: "Refresh",
+          onAction: () => revalidator.revalidate(),
+          loading: revalidator.state !== "idle",
+        },
+      ]}
     >
       <Layout>
         <Layout.Section variant="fullWidth">
@@ -302,7 +375,7 @@ export default function CombinationsIndex() {
               <>
                 <IndexTable
                   resourceName={{ singular: "combination", plural: "combinations" }}
-                  itemCount={combinations.length}
+                  itemCount={displayCombinations.length}
                   headings={[
                     { title: "Image" },
                     { title: "Name" },
@@ -313,7 +386,7 @@ export default function CombinationsIndex() {
                   ]}
                   selectable={false}
                 >
-                  {combinations.map((c: KfoCombination) => (
+                  {displayCombinations.map((c: KfoCombination) => (
                     <IndexTable.Row id={c.objectID} key={c.objectID} position={0}>
                       <IndexTable.Cell>
                         <Thumbnail source={c.image_url || ""} alt={c.name} size="small" />
@@ -346,9 +419,7 @@ export default function CombinationsIndex() {
                       </IndexTable.Cell>
                       <IndexTable.Cell>
                         <InlineStack gap="200">
-                          <Link to={`/app/combinations/${c.objectID}/edit`}>
-                            <Button variant="plain">Edit</Button>
-                          </Link>
+                          <Button variant="plain" onClick={() => openEditModal(c)}>Edit</Button>
                           <Button variant="plain" tone="critical" onClick={() => handleDelete(c)}>
                             Delete
                           </Button>
@@ -389,6 +460,56 @@ export default function CombinationsIndex() {
           </Card>
         </Layout.Section>
       </Layout>
+
+      <Modal
+        open={showNewModal}
+        onClose={() => setShowNewModal(false)}
+        title="New combination"
+        size="fullScreen"
+        primaryAction={{ content: "Save", onAction: handleModalSave, loading: newSaving }}
+        secondaryActions={[{ content: "Cancel", onAction: () => setShowNewModal(false) }]}
+      >
+        <Modal.Section flush>
+          <CombinationForm
+            key={modalKey}
+            ref={formRef}
+            mode="modal"
+            colors={colors}
+            tags={tags}
+            combination={null}
+            saving={newSaving}
+            onCancel={() => setShowNewModal(false)}
+          />
+        </Modal.Section>
+      </Modal>
+
+      <Modal
+        open={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit combination"
+        size="fullScreen"
+        primaryAction={{ content: "Save", onAction: handleEditModalSave, loading: editSaving }}
+        secondaryActions={[{ content: "Cancel", onAction: () => setShowEditModal(false) }]}
+      >
+        <Modal.Section flush>
+          {editLoadFetcher.state !== "idle" ? (
+            <Box padding="400">
+              <InlineStack align="center"><Spinner size="large" /></InlineStack>
+            </Box>
+          ) : editLoadFetcher.data?.combination ? (
+            <CombinationForm
+              key={editModalKey}
+              ref={editFormRef}
+              mode="modal"
+              colors={colors}
+              tags={tags}
+              combination={editLoadFetcher.data.combination}
+              saving={editSaving}
+              onCancel={() => setShowEditModal(false)}
+            />
+          ) : null}
+        </Modal.Section>
+      </Modal>
     </Page>
   );
 }

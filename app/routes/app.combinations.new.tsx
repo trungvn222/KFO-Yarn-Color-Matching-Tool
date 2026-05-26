@@ -32,7 +32,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const objectID = randomUUID();
 
-  await client.saveObject({
+  const { taskID } = await client.saveObject({
     indexName: INDEXES.combinations,
     body: {
       objectID,
@@ -46,6 +46,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     },
   });
 
+  await client.waitForTask({ indexName: INDEXES.combinations, taskID });
+
+  if (formData.get("_modal") === "1") return json({ ok: true });
   return redirect("/app");
 };
 

@@ -1,3 +1,4 @@
+import { forwardRef, useImperativeHandle, useState, useRef } from "react";
 import { useNavigate, useSubmit, useNavigation, useFetcher } from "@remix-run/react";
 import {
   Page,
@@ -21,7 +22,6 @@ import {
 } from "@shopify/polaris";
 import { RichTextEditor } from "./RichTextEditor";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { useState, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -105,18 +105,35 @@ function SortableProductRow({
   );
 }
 
+export interface CombinationFormHandle {
+  getData: () => {
+    name: string;
+    description: string;
+    image_url: string;
+    position: number;
+    tags: string[];
+    colors: string[];
+    products: ProductRow[];
+  };
+}
+
 interface Props {
   colors: KfoColor[];
   tags: KfoTag[];
   combination: KfoCombination | null;
+  mode?: "page" | "modal";
+  onCancel?: () => void;
+  saving?: boolean;
 }
 
-export function CombinationForm({ colors, tags, combination }: Props) {
+export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function CombinationForm(
+  { colors, tags, combination, mode = "page", onCancel, saving: externalSaving },
+  ref,
+) {
   const navigate = useNavigate();
   const submit = useSubmit();
   const navigation = useNavigation();
   const shopify = useAppBridge();
-  const saving = navigation.state !== "idle";
 
   const [name, setName] = useState(combination?.name ?? "");
   const [description, setDescription] = useState((combination as any)?.description ?? "");
@@ -127,6 +144,25 @@ export function CombinationForm({ colors, tags, combination }: Props) {
   const filesFetcher = useFetcher<{ files: string[] }>();
   const [position, setPosition] = useState(String(combination?.position ?? 0));
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const saving = mode === "modal" ? (externalSaving ?? false) : navigation.state !== "idle";
+
+  useImperativeHandle(ref, () => ({
+    getData: () => ({
+      name,
+      description,
+      image_url: imageUrl,
+      position: Number(position),
+      tags: selectedTags,
+      colors: selectedColors,
+      products,
+    }),
+  }));
+
+  function handleCancel() {
+    if (onCancel) onCancel();
+    else navigate("/app");
+  }
 
   function openLibrary() {
     setShowLibrary(true);
@@ -242,15 +278,9 @@ export function CombinationForm({ colors, tags, combination }: Props) {
     );
   }
 
-  return (
-    <Page
-      fullWidth
-      title={combination ? "Edit combination" : "New combination"}
-      backAction={{ content: "Combinations", onAction: () => navigate("/app") }}
-      primaryAction={{ content: "Save", onAction: handleSave, loading: saving }}
-      secondaryActions={[{ content: "Cancel", onAction: () => navigate("/app") }]}
-    >
-      <Layout gap="600">
+  const formContent = (
+    <>
+      <Layout>
         <Layout.Section>
           <Card>
             <BlockStack gap="400">
@@ -462,6 +492,7 @@ export function CombinationForm({ colors, tags, combination }: Props) {
           </BlockStack>
         </Layout.Section>
       </Layout>
+
       <Modal
         open={showLibrary}
         onClose={() => setShowLibrary(false)}
@@ -490,6 +521,22 @@ export function CombinationForm({ colors, tags, combination }: Props) {
           )}
         </Modal.Section>
       </Modal>
+    </>
+  );
+
+  if (mode === "modal") {
+    return <Box padding="400">{formContent}</Box>;
+  }
+
+  return (
+    <Page
+      fullWidth
+      title={combination ? "Edit combination" : "New combination"}
+      backAction={{ content: "Combinations", onAction: handleCancel }}
+      primaryAction={{ content: "Save", onAction: handleSave, loading: saving }}
+      secondaryActions={[{ content: "Cancel", onAction: handleCancel }]}
+    >
+      {formContent}
     </Page>
   );
-}
+});

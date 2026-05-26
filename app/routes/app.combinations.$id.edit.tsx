@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { INDEXES } from "../algolia.server";
@@ -65,20 +65,21 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const client = await getMerchantAlgoliaClient(session.shop);
 
 
-  await client.saveObject({
-    indexName: INDEXES.combinations,
-    body: {
-      objectID: params.id!,
-      name: data.name,
-      description: data.description || "",
-      image_url: data.image_url || "",
-      position: data.position ?? 0,
-      tags: data.tags,
-      colors: data.colors,
-      products: data.products,
-    },
-  });
+  const body = {
+    objectID: params.id!,
+    name: data.name,
+    description: data.description || "",
+    image_url: data.image_url || "",
+    position: data.position ?? 0,
+    tags: data.tags,
+    colors: data.colors,
+    products: data.products,
+  };
 
+  const { taskID } = await client.saveObject({ indexName: INDEXES.combinations, body });
+  await client.waitForTask({ indexName: INDEXES.combinations, taskID });
+
+  if (formData.get("_modal") === "1") return json({ ok: true, combination: body });
   return redirect("/app");
 };
 

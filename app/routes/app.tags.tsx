@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigation, useFetcher } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigation, useFetcher, useRevalidator } from "@remix-run/react";
 import { useState, useRef, useEffect } from "react";
 import {
   Page,
@@ -126,6 +126,7 @@ export default function TagsPage() {
   const { tags, allIds, q, page, perPage, nbPages, nbHits } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigation = useNavigation();
+  const revalidator = useRevalidator();
   const shopify = useAppBridge();
   const loading = navigation.state !== "idle";
 
@@ -337,6 +338,9 @@ export default function TagsPage() {
       fullWidth
       title="Tags"
       primaryAction={{ content: "Add tag", onAction: openCreate }}
+      secondaryActions={[
+        { content: "Refresh", onAction: () => revalidator.revalidate(), loading: revalidator.state !== "idle" },
+      ]}
     >
       <Layout>
         <Layout.Section variant="fullWidth">
