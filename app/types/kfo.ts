@@ -21,6 +21,8 @@ export interface KfoColor {
   name: string;
   hex: string;
   image_url?: string;
+  content_image_url?: string;
+  content_title?: string;
   description?: string;
 }
 
@@ -30,6 +32,7 @@ export interface KfoTag {
   slug: string;
   color: string;
   image_url?: string;
+  content_image_url?: string;
   description?: string;
 }
 

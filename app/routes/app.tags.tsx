@@ -9,7 +9,6 @@ import {
   DataTable,
   Button,
   Modal,
-  FormLayout,
   TextField,
   InlineStack,
   BlockStack,
@@ -25,6 +24,7 @@ import {
 } from "@shopify/polaris";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
+import { RichTextEditor } from "../components/RichTextEditor";
 import { INDEXES } from "../algolia.server";
 import { getMerchantAlgoliaClient } from "../merchantAlgolia.server";
 import { requireMerchantConfig } from "../config.server";
@@ -77,11 +77,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const name = formData.get("name") as string;
     const color = formData.get("color") as string;
     const image_url = (formData.get("image_url") as string) || "";
+    const content_image_url = (formData.get("content_image_url") as string) || "";
     const description = (formData.get("description") as string) || "";
     const slug = (formData.get("objectID") as string) || name.toLowerCase().replace(/\s+/g, "-");
     const { taskID } = await client.saveObject({
       indexName: INDEXES.tags,
-      body: { objectID: slug, name, slug, color, image_url, description },
+      body: { objectID: slug, name, slug, color, image_url, content_image_url, description },
     });
     await client.waitForTask({ indexName: INDEXES.tags, taskID });
     return json({ ok: true });
@@ -157,12 +158,17 @@ export default function TagsPage() {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#FFF9C4");
   const [imageUrl, setImageUrl] = useState("");
+  const [contentImageUrl, setContentImageUrl] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
+  const [contentImageUploading, setContentImageUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [contentUploadError, setContentUploadError] = useState("");
   const [description, setDescription] = useState("");
   const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryTarget, setLibraryTarget] = useState<"filter" | "content">("filter");
   const filesFetcher = useFetcher<{ files: string[] }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const contentFileInputRef = useRef<HTMLInputElement>(null);
 
   // Delete flow
   const [deletingTag, setDeletingTag] = useState<KfoTag | null>(null);
@@ -223,6 +229,7 @@ export default function TagsPage() {
     setName("");
     setColor("#FFF9C4");
     setImageUrl("");
+    setContentImageUrl("");
     setDescription("");
     setModalOpen(true);
   }
@@ -232,40 +239,65 @@ export default function TagsPage() {
     setName(tag.name);
     setColor(tag.color);
     setImageUrl(tag.image_url ?? "");
+    setContentImageUrl(tag.content_image_url ?? "");
     setDescription(tag.description ?? "");
     setModalOpen(true);
   }
 
-  function openLibrary() {
+  function openLibrary(target: "filter" | "content") {
+    setLibraryTarget(target);
     setShowLibrary(true);
     if (filesFetcher.state === "idle" && !filesFetcher.data) {
       filesFetcher.load("/app/upload");
     }
   }
 
+  async function uploadFile(file: File): Promise<string> {
+    const token = await shopify.idToken();
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/app/upload", {
+      method: "POST",
+      body: fd,
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok && res.headers.get("content-type")?.includes("text/html")) {
+      throw new Error(`Auth error ${res.status} — try reinstalling the app`);
+    }
+    const data = await res.json();
+    if (data.url) return data.url;
+    throw new Error(data.error ?? "Upload failed");
+  }
+
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setImageUploading(true);
+    setUploadError("");
     try {
-      const token = await shopify.idToken();
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/app/upload", {
-        method: "POST",
-        body: fd,
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok && res.headers.get("content-type")?.includes("text/html")) {
-        setUploadError(`Auth error ${res.status} — try reinstalling the app`);
-        return;
-      }
-      const data = await res.json();
-      if (data.url) { setImageUrl(data.url); setUploadError(""); }
-      else setUploadError(data.error ?? "Upload failed");
+      const url = await uploadFile(file);
+      setImageUrl(url);
+    } catch (err: any) {
+      setUploadError(err.message);
     } finally {
       setImageUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleContentImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setContentImageUploading(true);
+    setContentUploadError("");
+    try {
+      const url = await uploadFile(file);
+      setContentImageUrl(url);
+    } catch (err: any) {
+      setContentUploadError(err.message);
+    } finally {
+      setContentImageUploading(false);
+      if (contentFileInputRef.current) contentFileInputRef.current.value = "";
     }
   }
 
@@ -275,7 +307,7 @@ export default function TagsPage() {
   function handleSave() {
     if (isDuplicate) return;
     submit(
-      { intent: editing ? "edit" : "create", objectID: editing?.objectID ?? "", name, color, image_url: imageUrl, description },
+      { intent: editing ? "edit" : "create", objectID: editing?.objectID ?? "", name, color, image_url: imageUrl, content_image_url: contentImageUrl, description },
       { method: "post" }
     );
     setModalOpen(false);
@@ -374,16 +406,22 @@ export default function TagsPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editing ? "Edit tag" : "Add tag"}
+        size="large"
         primaryAction={{ content: "Save", onAction: handleSave, loading: loading, disabled: isDuplicate }}
         secondaryActions={[{ content: "Cancel", onAction: () => setModalOpen(false) }]}
       >
         <Modal.Section>
-          <FormLayout>
+          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageUpload} />
+          <input ref={contentFileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleContentImageUpload} />
+
+          <BlockStack gap="400">
             {isDuplicate && (
               <Banner tone="warning">
                 ID <strong>{previewSlug}</strong> already exists. Choose a different name.
               </Banner>
             )}
+
+            {/* Row 1: Name */}
             <TextField
               label="Name"
               value={name}
@@ -397,59 +435,85 @@ export default function TagsPage() {
                 value={editing.objectID}
                 disabled
                 autoComplete="off"
-                helpText="Permanent identifier used to link this tag to combinations. Cannot be changed after creation."
+                helpText="Permanent identifier, cannot be changed after creation."
               />
             )}
-            <TextField
-              label="Badge color (hex)"
-              value={color}
-              onChange={setColor}
-              autoComplete="off"
-              prefix={
-                <div style={{ backgroundColor: color, width: 16, height: 16, borderRadius: 2, border: "1px solid #ccc" }} />
-              }
-            />
-            <TextField
-              label="Description"
-              value={description}
-              onChange={setDescription}
-              autoComplete="off"
-              multiline={3}
-            />
-            <BlockStack gap="200">
-              <Text as="p" variant="bodyMd">Image (optional)</Text>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={handleImageUpload}
-              />
-              {imageUrl && (
-                <img
-                  src={imageUrl}
-                  alt="Tag preview"
-                  style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "1px solid #ccc" }}
+
+            {/* Row 2: Content image (left) + Description (right) — same height */}
+            <div style={{ display: "flex", gap: 16, alignItems: "stretch" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, width: 160 }}>
+                <Text as="p" variant="bodyMd">
+                  Content image{" "}
+                  <Text as="span" variant="bodySm" tone="subdued">(optional)</Text>
+                </Text>
+                <div
+                  style={{
+                    flex: 1,
+                    minHeight: 120,
+                    borderRadius: 8,
+                    border: "1px dashed #8c9196",
+                    overflow: "hidden",
+                    background: contentImageUrl ? "none" : "#f6f6f7",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {contentImageUrl ? (
+                    <img src={contentImageUrl} alt="Content" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  ) : (
+                    <Text as="span" variant="bodySm" tone="subdued">No image</Text>
+                  )}
+                </div>
+                <InlineStack gap="100" wrap>
+                  <Button size="slim" onClick={() => contentFileInputRef.current?.click()} loading={contentImageUploading}>Upload</Button>
+                  <Button size="slim" variant="plain" onClick={() => openLibrary("content")}>Library</Button>
+                  {contentImageUrl && <Button size="slim" variant="plain" tone="critical" onClick={() => setContentImageUrl("")}>Remove</Button>}
+                </InlineStack>
+                {contentUploadError && <Banner tone="critical" onDismiss={() => setContentUploadError("")}>{contentUploadError}</Banner>}
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                <RichTextEditor
+                  label="Description"
+                  value={description}
+                  onChange={setDescription}
                 />
-              )}
-              <InlineStack gap="200">
-                <Button size="slim" onClick={() => fileInputRef.current?.click()} loading={imageUploading}>
-                  Upload
-                </Button>
-                <Button size="slim" variant="plain" onClick={openLibrary}>
-                  Browse library
-                </Button>
-                {imageUrl && (
-                  <Button size="slim" variant="plain" tone="critical" onClick={() => setImageUrl("")}>
-                    Remove
-                  </Button>
-                )}
-              </InlineStack>
-              {uploadError && (
-                <Banner tone="critical" onDismiss={() => setUploadError("")}>{uploadError}</Banner>
-              )}
-            </BlockStack>
-          </FormLayout>
+              </div>
+            </div>
+
+            {/* Row 3: Filter Color + Filter image — cùng nhóm */}
+            <div style={{ display: "flex", gap: 24, alignItems: "flex-end" }}>
+              <div style={{ width: 180 }}>
+                <TextField
+                  label="Filter Color"
+                  value={color}
+                  onChange={setColor}
+                  autoComplete="off"
+                  prefix={
+                    <div style={{ backgroundColor: color, width: 16, height: 16, borderRadius: 2, border: "1px solid #ccc" }} />
+                  }
+                />
+              </div>
+              <BlockStack gap="100">
+                <Text as="p" variant="bodyMd">
+                  Filter image{" "}
+                  <Text as="span" variant="bodySm" tone="subdued">(swatch in tag filter)</Text>
+                </Text>
+                <InlineStack gap="200" blockAlign="center">
+                  {imageUrl ? (
+                    <img src={imageUrl} alt="Filter" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: "50%", border: "1px solid #ccc", flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: color, border: "1px solid #ccc", flexShrink: 0 }} />
+                  )}
+                  <Button size="slim" onClick={() => fileInputRef.current?.click()} loading={imageUploading}>Upload</Button>
+                  <Button size="slim" variant="plain" onClick={() => openLibrary("filter")}>Library</Button>
+                  {imageUrl && <Button size="slim" variant="plain" tone="critical" onClick={() => setImageUrl("")}>Remove</Button>}
+                </InlineStack>
+                {uploadError && <Banner tone="critical" onDismiss={() => setUploadError("")}>{uploadError}</Banner>}
+              </BlockStack>
+            </div>
+          </BlockStack>
         </Modal.Section>
       </Modal>
 
@@ -514,7 +578,11 @@ export default function TagsPage() {
               {filesFetcher.data.files.map((url) => (
                 <div
                   key={url}
-                  onClick={() => { setImageUrl(url); setShowLibrary(false); }}
+                  onClick={() => {
+                    if (libraryTarget === "content") setContentImageUrl(url);
+                    else setImageUrl(url);
+                    setShowLibrary(false);
+                  }}
                   style={{ cursor: "pointer", borderRadius: 8, overflow: "hidden", border: "2px solid transparent", transition: "border 0.15s" }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#008060")}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}

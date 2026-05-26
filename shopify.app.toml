@@ -2,7 +2,7 @@
 
 client_id = "1a48ccda2c05ab259869bdc89b758508"
 name = "KFO Yarn Color Matching Tool"
-application_url = "https://1954-2402-800-639f-fb5f-7d33-3844-ca61-6dec.ngrok-free.app"
+application_url = "https://0f87-2402-800-639f-fb5f-93e-cff0-c6fc-6631.ngrok-free.app"
 embedded = true
 
 [webhooks]
@@ -16,8 +16,8 @@ use_legacy_install_flow = true
 
 [auth]
 redirect_urls = [
-  "https://1954-2402-800-639f-fb5f-7d33-3844-ca61-6dec.ngrok-free.app/auth",
-  "https://1954-2402-800-639f-fb5f-7d33-3844-ca61-6dec.ngrok-free.app/auth/callback",
-  "https://1954-2402-800-639f-fb5f-7d33-3844-ca61-6dec.ngrok-free.app/auth/shopify/callback",
-  "https://1954-2402-800-639f-fb5f-7d33-3844-ca61-6dec.ngrok-free.app/api/auth/callback"
+  "https://0f87-2402-800-639f-fb5f-93e-cff0-c6fc-6631.ngrok-free.app/auth",
+  "https://0f87-2402-800-639f-fb5f-93e-cff0-c6fc-6631.ngrok-free.app/auth/callback",
+  "https://0f87-2402-800-639f-fb5f-93e-cff0-c6fc-6631.ngrok-free.app/auth/shopify/callback",
+  "https://0f87-2402-800-639f-fb5f-93e-cff0-c6fc-6631.ngrok-free.app/api/auth/callback"
 ]

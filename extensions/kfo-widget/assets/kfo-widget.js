@@ -57,6 +57,7 @@
     const sectionPerPage = {}; // colorId → hitsPerPage shown so far
     const COLORS_COLLAPSED = 8;
     let colorsExpanded = false;
+    let sectionObserver = null;
 
     // --- Favorites (localStorage) ---
     const FAV_KEY = 'kfo_favorites';
@@ -254,64 +255,99 @@
       renderPagination();
     }
 
-    // Section mode: one section per selected color, parallel queries
+    // Section mode: render shells immediately, lazy-load cards via IntersectionObserver
     async function renderSections() {
       const grid = document.getElementById('kfo-grid');
       grid.className = 'kfo-sections';
-      grid.innerHTML = '<div class="kfo-loading"><span class="kfo-spinner"></span></div>';
 
       const colorMap = Object.fromEntries(allColors.map(c => [c.objectID, c]));
 
-      // Sort sections by position in allColors
       const sorted = [...selectedColors].sort(
         (a, b) => allColors.findIndex(c => c.objectID === a) - allColors.findIndex(c => c.objectID === b)
       );
 
-      // Parallel Algolia query per color
-      const results = await Promise.all(sorted.map(colorId => {
-        if (!sectionPerPage[colorId]) sectionPerPage[colorId] = 6;
-        const facetFilters = [[`colors:${colorId}`]];
-        if (selectedTags.length) facetFilters.push(selectedTags.map(s => `tags:${s}`));
-        return combIndex.search(query, { hitsPerPage: sectionPerPage[colorId], facetFilters })
-          .then(res => ({ colorId, hits: res.hits, nbHits: res.nbHits }));
-      }));
+      // Disconnect previous observer before re-rendering
+      if (sectionObserver) { sectionObserver.disconnect(); sectionObserver = null; }
 
-      const allHits = results.flatMap(r => r.hits);
-
-      if (allHits.length === 0) {
-        grid.innerHTML = '<p class="kfo-empty">No combinations found.</p>';
-        return;
-      }
-
-      grid.innerHTML = results.map(({ colorId, hits, nbHits }) => {
+      // Render section shells immediately (header visible, grid pending)
+      grid.innerHTML = sorted.map(colorId => {
         const color = colorMap[colorId];
-        if (!color || hits.length === 0) return '';
-        const remaining = nbHits - hits.length;
+        if (!color) return '';
         return `
-          <div class="kfo-section">
+          <div class="kfo-section" data-color-id="${colorId}">
             <div class="kfo-section-header">
               <div class="kfo-section-img-wrap">
-                ${color.image_url
-                  ? `<img class="kfo-section-img" src="${color.image_url}" alt="${color.name}" />`
+                ${(color.content_image_url || color.image_url)
+                  ? `<img class="kfo-section-img" src="${color.content_image_url || color.image_url}" alt="${color.name}" />`
                   : `<div class="kfo-section-img kfo-section-img--color" style="background:${color.hex}"></div>`
                 }
               </div>
               <div class="kfo-section-info">
-                <h3 class="kfo-section-title">${color.name}</h3>
-                ${color.description ? `<p class="kfo-section-desc">${color.description}</p>` : ''}
+                <h3 class="kfo-section-title">${color.content_title || color.name}</h3>
+                ${color.description ? `<div class="kfo-section-desc">${color.description}</div>` : ''}
               </div>
             </div>
-            <div class="kfo-section-grid">
-              ${hits.map(h => cardHtml(h, colorMap)).join('')}
+            <div class="kfo-section-body">
+              <div class="kfo-loading"><span class="kfo-spinner"></span></div>
             </div>
-            ${remaining > 0 ? `<button class="kfo-load-more-btn" data-color-id="${colorId}">+${remaining} more</button>` : ''}
           </div>
         `;
       }).join('');
 
-      // Bind card clicks
-      grid.querySelectorAll('.kfo-card').forEach(card => {
-        const combo = allHits.find(h => h.objectID === card.dataset.id);
+      if (!grid.querySelector('.kfo-section')) {
+        grid.innerHTML = '<p class="kfo-empty">No combinations found.</p>';
+        return;
+      }
+
+      // Observe each section — load cards when it enters the viewport
+      sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const sectionEl = entry.target;
+          sectionObserver.unobserve(sectionEl);
+          loadSectionCards(sectionEl.dataset.colorId, sectionEl, colorMap);
+        });
+      }, { rootMargin: '200px 0px' });
+
+      grid.querySelectorAll('.kfo-section').forEach(s => sectionObserver.observe(s));
+    }
+
+    async function loadSectionCards(colorId, sectionEl, colorMap) {
+      const body = sectionEl.querySelector('.kfo-section-body');
+      if (!sectionPerPage[colorId]) sectionPerPage[colorId] = 12;
+
+      const facetFilters = [[`colors:${colorId}`]];
+      if (selectedTags.length) facetFilters.push(selectedTags.map(s => `tags:${s}`));
+
+      const res = await combIndex.search(query, { hitsPerPage: sectionPerPage[colorId], facetFilters });
+
+      if (!res.hits.length) {
+        sectionEl.style.display = 'none';
+        return;
+      }
+
+      const remaining = res.nbHits - res.hits.length;
+      // If more results exist: show first N-1 cards + "Show all" overlay on the Nth slot
+      const visibleHits = remaining > 0 ? res.hits.slice(0, -1) : res.hits;
+      const showAllHit  = remaining > 0 ? res.hits[res.hits.length - 1] : null;
+
+      body.innerHTML = `
+        <div class="kfo-section-grid">
+          ${visibleHits.map(h => cardHtml(h)).join('')}
+          ${showAllHit ? `
+            <div class="kfo-show-all-card" role="button" tabindex="0">
+              ${showAllHit.image_url ? `<img src="${showAllHit.image_url}" alt="" />` : '<div class="kfo-show-all-card-bg"></div>'}
+              <div class="kfo-show-all-overlay">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                <span>Show all</span>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      body.querySelectorAll('.kfo-card').forEach(card => {
+        const combo = res.hits.find(h => h.objectID === card.dataset.id);
 
         card.querySelector('.kfo-heart-btn').addEventListener('click', (e) => {
           e.stopPropagation();
@@ -331,12 +367,10 @@
         card.addEventListener('keydown', e => { if (e.key === 'Enter') openModal(combo, colorMap); });
       });
 
-      // Bind load-more clicks
-      grid.querySelectorAll('.kfo-load-more-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          sectionPerPage[btn.dataset.colorId] = (sectionPerPage[btn.dataset.colorId] || 6) + 6;
-          await renderSections();
-        });
+      body.querySelector('.kfo-show-all-card')?.addEventListener('click', async () => {
+        sectionPerPage[colorId] = res.nbHits;
+        body.innerHTML = '<div class="kfo-loading"><span class="kfo-spinner"></span></div>';
+        await loadSectionCards(colorId, sectionEl, colorMap);
       });
     }
 

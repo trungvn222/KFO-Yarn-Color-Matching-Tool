@@ -19,6 +19,7 @@ import {
   Listbox,
   AutoSelection,
 } from "@shopify/polaris";
+import { RichTextEditor } from "./RichTextEditor";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { useState, useRef } from "react";
 import {
@@ -264,12 +265,10 @@ export function CombinationForm({ colors, tags, combination }: Props) {
                 </Box>
                 <Button onClick={autoName}>Auto-name</Button>
               </InlineStack>
-              <TextField
+              <RichTextEditor
                 label="Description"
                 value={description}
                 onChange={setDescription}
-                autoComplete="off"
-                multiline={3}
               />
               <TextField
                 label="Display position"
