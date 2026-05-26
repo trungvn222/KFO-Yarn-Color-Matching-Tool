@@ -179,6 +179,15 @@ export default function TagsPage() {
   const checkFetcher = useFetcher<{ count: number }>();
   const deleteFetcher = useFetcher<{ ok: boolean; removed: number }>();
 
+  // Save (create/edit) fetcher — avoids full-page navigation
+  const saveFetcher = useFetcher<{ ok: boolean }>();
+
+  useEffect(() => {
+    if (saveFetcher.state === "idle" && saveFetcher.data?.ok) {
+      revalidator.revalidate();
+    }
+  }, [saveFetcher.state, saveFetcher.data]);
+
   useEffect(() => {
     if (checkFetcher.state === "idle" && checkFetcher.data != null && deletePhase === "checking") {
       setDeletePhase("confirming");
@@ -307,11 +316,11 @@ export default function TagsPage() {
 
   function handleSave() {
     if (isDuplicate) return;
-    submit(
+    setModalOpen(false);
+    saveFetcher.submit(
       { intent: editing ? "edit" : "create", objectID: editing?.objectID ?? "", name, color, image_url: imageUrl, content_image_url: contentImageUrl, description },
       { method: "post" }
     );
-    setModalOpen(false);
   }
 
   const rows = tags.map((t: KfoTag) => [
@@ -411,7 +420,7 @@ export default function TagsPage() {
         onClose={() => setModalOpen(false)}
         title={editing ? "Edit tag" : "Add tag"}
         size="large"
-        primaryAction={{ content: "Save", onAction: handleSave, loading: loading, disabled: isDuplicate }}
+        primaryAction={{ content: "Save", onAction: handleSave, loading: saveFetcher.state !== "idle", disabled: isDuplicate }}
         secondaryActions={[{ content: "Cancel", onAction: () => setModalOpen(false) }]}
       >
         <Modal.Section>

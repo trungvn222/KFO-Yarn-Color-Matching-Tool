@@ -466,7 +466,7 @@ export default function CombinationsIndex() {
         open={showNewModal}
         onClose={() => setShowNewModal(false)}
         title="New combination"
-        size="fullScreen"
+        size="large"
         primaryAction={{ content: "Save", onAction: handleModalSave, loading: newSaving }}
         secondaryActions={[{ content: "Cancel", onAction: () => setShowNewModal(false) }]}
       >
@@ -488,7 +488,7 @@ export default function CombinationsIndex() {
         open={showEditModal}
         onClose={() => { setShowEditModal(false); setEditingId(null); }}
         title="Edit combination"
-        size="fullScreen"
+        size="large"
         primaryAction={{ content: "Save", onAction: handleEditModalSave, loading: editSaving }}
         secondaryActions={[{ content: "Cancel", onAction: () => { setShowEditModal(false); setEditingId(null); } }]}
       >

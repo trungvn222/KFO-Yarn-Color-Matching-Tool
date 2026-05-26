@@ -11,7 +11,6 @@ import {
   Badge,
   Button,
   Modal,
-  FormLayout,
   TextField,
   InlineStack,
   BlockStack,
@@ -198,6 +197,15 @@ export default function ColorsPage() {
   const [importError, setImportError] = useState("");
   const csvInputRef = useRef<HTMLInputElement>(null);
   const importFetcher = useFetcher<{ ok: boolean; imported: number }>();
+
+  // Save (create/edit) fetcher — avoids full-page navigation
+  const saveFetcher = useFetcher<{ ok: boolean }>();
+
+  useEffect(() => {
+    if (saveFetcher.state === "idle" && saveFetcher.data?.ok) {
+      revalidator.revalidate();
+    }
+  }, [saveFetcher.state, saveFetcher.data]);
 
   // Delete flow
   const [deletingColor, setDeletingColor] = useState<KfoColor | null>(null);
@@ -390,11 +398,11 @@ export default function ColorsPage() {
 
   function handleSave() {
     if (isDuplicate) return;
-    submit(
+    setModalOpen(false);
+    saveFetcher.submit(
       { intent: editing ? "edit" : "create", objectID: editing?.objectID ?? "", name, hex, image_url: imageUrl, content_image_url: contentImageUrl, content_title: contentTitle, description },
       { method: "post" }
     );
-    setModalOpen(false);
   }
 
   const rows = colors.map((c: KfoColor) => [
@@ -495,7 +503,7 @@ export default function ColorsPage() {
         onClose={() => setModalOpen(false)}
         title={editing ? "Edit color" : "Add color"}
         size="large"
-        primaryAction={{ content: "Save", onAction: handleSave, loading: loading, disabled: isDuplicate }}
+        primaryAction={{ content: "Save", onAction: handleSave, loading: saveFetcher.state !== "idle", disabled: isDuplicate }}
         secondaryActions={[{ content: "Cancel", onAction: () => setModalOpen(false) }]}
       >
         <Modal.Section>
