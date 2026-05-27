@@ -200,9 +200,11 @@ export default function ColorsPage() {
 
   // Save (create/edit) fetcher — avoids full-page navigation
   const saveFetcher = useFetcher<{ ok: boolean }>();
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (saveFetcher.state === "idle" && saveFetcher.data?.ok) {
+      setSavingId(null);
       revalidator.revalidate();
     }
   }, [saveFetcher.state, saveFetcher.data]);
@@ -398,6 +400,7 @@ export default function ColorsPage() {
 
   function handleSave() {
     if (isDuplicate) return;
+    setSavingId(editing?.objectID ?? null);
     setModalOpen(false);
     saveFetcher.submit(
       { intent: editing ? "edit" : "create", objectID: editing?.objectID ?? "", name, hex, image_url: imageUrl, content_image_url: contentImageUrl, content_title: contentTitle, description },
@@ -418,9 +421,15 @@ export default function ColorsPage() {
       </BlockStack>
     </InlineStack>,
     c.hex,
-    <InlineStack gap="200">
-      <Button variant="plain" onClick={() => openEdit(c)}>Edit</Button>
-      <Button variant="plain" tone="critical" onClick={() => handleDeleteClick(c)}>Delete</Button>
+    <InlineStack gap="200" blockAlign="center">
+      {savingId === c.objectID ? (
+        <Spinner size="small" />
+      ) : (
+        <>
+          <Button variant="plain" onClick={() => openEdit(c)}>Edit</Button>
+          <Button variant="plain" tone="critical" onClick={() => handleDeleteClick(c)}>Delete</Button>
+        </>
+      )}
     </InlineStack>,
   ]);
 

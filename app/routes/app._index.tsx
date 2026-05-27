@@ -155,11 +155,13 @@ export default function CombinationsIndex() {
   const editSaveFetcher = useFetcher<{ ok: boolean; combination: KfoCombination }>();
   const editSaving = editSaveFetcher.state !== "idle";
   const [overrides, setOverrides] = useState<Record<string, KfoCombination>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (editSaveFetcher.state === "idle" && editSaveFetcher.data?.ok) {
       const updated = editSaveFetcher.data.combination;
       if (updated) setOverrides((prev) => ({ ...prev, [updated.objectID]: updated }));
+      setSavingId(null);
     }
   }, [editSaveFetcher.state, editSaveFetcher.data]);
 
@@ -175,6 +177,7 @@ export default function CombinationsIndex() {
     if (!data || !editingId) return;
     const optimistic = { objectID: editingId, ...data } as KfoCombination;
     setOverrides((prev) => ({ ...prev, [editingId]: optimistic }));
+    setSavingId(editingId);
     setShowEditModal(false);
     setEditingId(null);
     editSaveFetcher.submit(
@@ -419,11 +422,15 @@ export default function CombinationsIndex() {
                         </InlineStack>
                       </IndexTable.Cell>
                       <IndexTable.Cell>
-                        <InlineStack gap="200">
-                          <Button variant="plain" onClick={() => openEditModal(c)}>Edit</Button>
-                          <Button variant="plain" tone="critical" onClick={() => handleDelete(c)}>
-                            Delete
-                          </Button>
+                        <InlineStack gap="200" blockAlign="center">
+                          {savingId === c.objectID ? (
+                            <Spinner size="small" />
+                          ) : (
+                            <>
+                              <Button variant="plain" onClick={() => openEditModal(c)}>Edit</Button>
+                              <Button variant="plain" tone="critical" onClick={() => handleDelete(c)}>Delete</Button>
+                            </>
+                          )}
                         </InlineStack>
                       </IndexTable.Cell>
                     </IndexTable.Row>

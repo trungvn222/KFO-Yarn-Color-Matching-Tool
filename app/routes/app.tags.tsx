@@ -181,9 +181,11 @@ export default function TagsPage() {
 
   // Save (create/edit) fetcher — avoids full-page navigation
   const saveFetcher = useFetcher<{ ok: boolean }>();
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (saveFetcher.state === "idle" && saveFetcher.data?.ok) {
+      setSavingId(null);
       revalidator.revalidate();
     }
   }, [saveFetcher.state, saveFetcher.data]);
@@ -316,6 +318,7 @@ export default function TagsPage() {
 
   function handleSave() {
     if (isDuplicate) return;
+    setSavingId(editing?.objectID ?? null);
     setModalOpen(false);
     saveFetcher.submit(
       { intent: editing ? "edit" : "create", objectID: editing?.objectID ?? "", name, color, image_url: imageUrl, content_image_url: contentImageUrl, description },
@@ -336,9 +339,15 @@ export default function TagsPage() {
       </BlockStack>
     </InlineStack>,
     t.color,
-    <InlineStack gap="200">
-      <Button variant="plain" onClick={() => openEdit(t)}>Edit</Button>
-      <Button variant="plain" tone="critical" onClick={() => handleDeleteClick(t)}>Delete</Button>
+    <InlineStack gap="200" blockAlign="center">
+      {savingId === t.objectID ? (
+        <Spinner size="small" />
+      ) : (
+        <>
+          <Button variant="plain" onClick={() => openEdit(t)}>Edit</Button>
+          <Button variant="plain" tone="critical" onClick={() => handleDeleteClick(t)}>Delete</Button>
+        </>
+      )}
     </InlineStack>,
   ]);
 
