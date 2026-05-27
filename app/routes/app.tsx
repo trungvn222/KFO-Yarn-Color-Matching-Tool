@@ -31,6 +31,7 @@ export default function App() {
         <Link to="/app/tags">Tags</Link>
 <Link to="/app/import">Import</Link>
 <Link to="/app/settings">Settings</Link>
+<Link to="/app/guide">Guide</Link>
       </NavMenu>
       <Outlet />
     </AppProvider>

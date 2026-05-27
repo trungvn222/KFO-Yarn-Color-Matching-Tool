@@ -220,12 +220,8 @@
 
     // --- Content rendering ---
     async function renderContent() {
-      if (selectedColors.length > 0) {
-        document.getElementById('kfo-pagination').innerHTML = '';
-        await renderSections();
-      } else {
-        await renderFlat();
-      }
+      document.getElementById('kfo-pagination').innerHTML = '';
+      await renderSections();
     }
 
     // Flat mode: no color selected → single grid + pagination
@@ -262,7 +258,8 @@
 
       const colorMap = Object.fromEntries(allColors.map(c => [c.objectID, c]));
 
-      const sorted = [...selectedColors].sort(
+      const colorIds = selectedColors.length > 0 ? selectedColors : allColors.map(c => c.objectID);
+      const sorted = [...colorIds].sort(
         (a, b) => allColors.findIndex(c => c.objectID === a) - allColors.findIndex(c => c.objectID === b)
       );
 
