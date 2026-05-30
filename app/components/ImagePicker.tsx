@@ -74,6 +74,14 @@ export function ImagePicker({
     filesFetcher.load(`/app/upload?after=${encodeURIComponent(libraryCursor)}`);
   }
 
+  function refreshLibrary() {
+    if (filesFetcher.state !== "idle") return;
+    setLibraryFiles([]);
+    setLibraryCursor(null);
+    setLibraryHasNext(false);
+    filesFetcher.load("/app/upload");
+  }
+
   function openLibrary() {
     setShowLibrary(true);
     setLibrarySelected(value);
@@ -193,6 +201,13 @@ export function ImagePicker({
                   onClearButtonClick={() => setLibrarySearch("")}
                 />
               </div>
+              <Button
+                onClick={refreshLibrary}
+                loading={filesFetcher.state === "loading"}
+                accessibilityLabel="Refresh media"
+              >
+                Refresh
+              </Button>
               <Button onClick={() => fileInputRef.current?.click()} loading={imageUploading}>
                 Add media
               </Button>
