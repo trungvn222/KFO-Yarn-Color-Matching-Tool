@@ -240,8 +240,11 @@ export function ImagePicker({
               />
             </InlineStack>
 
+            <div style={{ minHeight: 440 }}>
             {filesFetcher.state === "loading" && libraryFiles.length === 0 ? (
-              <InlineStack align="center"><Spinner /></InlineStack>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 440 }}>
+                <Spinner />
+              </div>
             ) : (() => {
               const all = libraryFiles;
               const q = librarySearch.trim().toLowerCase();
@@ -323,6 +326,7 @@ export function ImagePicker({
                 </div>
               );
             })()}
+            </div>
           </BlockStack>
         </Modal.Section>
       </Modal>
