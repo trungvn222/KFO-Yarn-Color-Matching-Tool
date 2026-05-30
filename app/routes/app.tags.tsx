@@ -22,9 +22,9 @@ import {
   Box,
   Divider,
 } from "@shopify/polaris";
-import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { RichTextEditor } from "../components/RichTextEditor";
+import { ImagePicker } from "../components/ImagePicker";
 import { INDEXES } from "../algolia.server";
 import { getMerchantAlgoliaClient } from "../merchantAlgolia.server";
 import { requireMerchantConfig } from "../config.server";
@@ -127,7 +127,6 @@ export default function TagsPage() {
   const submit = useSubmit();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
-  const shopify = useAppBridge();
   const loading = navigation.state !== "idle";
 
   // Search
@@ -160,16 +159,7 @@ export default function TagsPage() {
   const [color, setColor] = useState("#FFF9C4");
   const [imageUrl, setImageUrl] = useState("");
   const [contentImageUrl, setContentImageUrl] = useState("");
-  const [imageUploading, setImageUploading] = useState(false);
-  const [contentImageUploading, setContentImageUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-  const [contentUploadError, setContentUploadError] = useState("");
   const [description, setDescription] = useState("");
-  const [showLibrary, setShowLibrary] = useState(false);
-  const [libraryTarget, setLibraryTarget] = useState<"filter" | "content">("filter");
-  const filesFetcher = useFetcher<{ files: string[] }>();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const contentFileInputRef = useRef<HTMLInputElement>(null);
 
   // Delete flow
   const [deletingTag, setDeletingTag] = useState<KfoTag | null>(null);
@@ -256,62 +246,6 @@ export default function TagsPage() {
     setModalOpen(true);
   }
 
-  function openLibrary(target: "filter" | "content") {
-    setLibraryTarget(target);
-    setShowLibrary(true);
-    if (filesFetcher.state === "idle" && !filesFetcher.data) {
-      filesFetcher.load("/app/upload");
-    }
-  }
-
-  async function uploadFile(file: File): Promise<string> {
-    const token = await shopify.idToken();
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/app/upload", {
-      method: "POST",
-      body: fd,
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok && res.headers.get("content-type")?.includes("text/html")) {
-      throw new Error(`Auth error ${res.status} — try reinstalling the app`);
-    }
-    const data = await res.json();
-    if (data.url) return data.url;
-    throw new Error(data.error ?? "Upload failed");
-  }
-
-  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageUploading(true);
-    setUploadError("");
-    try {
-      const url = await uploadFile(file);
-      setImageUrl(url);
-    } catch (err: any) {
-      setUploadError(err.message);
-    } finally {
-      setImageUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  }
-
-  async function handleContentImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setContentImageUploading(true);
-    setContentUploadError("");
-    try {
-      const url = await uploadFile(file);
-      setContentImageUrl(url);
-    } catch (err: any) {
-      setContentUploadError(err.message);
-    } finally {
-      setContentImageUploading(false);
-      if (contentFileInputRef.current) contentFileInputRef.current.value = "";
-    }
-  }
 
   const previewSlug = name.toLowerCase().replace(/\s+/g, "-");
   const isDuplicate = !editing && allIds.includes(previewSlug);
@@ -433,9 +367,6 @@ export default function TagsPage() {
         secondaryActions={[{ content: "Cancel", onAction: () => setModalOpen(false) }]}
       >
         <Modal.Section>
-          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageUpload} />
-          <input ref={contentFileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleContentImageUpload} />
-
           <BlockStack gap="400">
             {isDuplicate && (
               <Banner tone="warning">
@@ -463,36 +394,12 @@ export default function TagsPage() {
 
             {/* Row 2: Content image (left) + Description (right) — same height */}
             <div style={{ display: "flex", gap: 16, alignItems: "stretch" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, width: 160 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, width: 200 }}>
                 <Text as="p" variant="bodyMd">
                   Content image{" "}
                   <Text as="span" variant="bodySm" tone="subdued">(optional)</Text>
                 </Text>
-                <div
-                  style={{
-                    flex: 1,
-                    minHeight: 120,
-                    borderRadius: 8,
-                    border: "1px dashed #8c9196",
-                    overflow: "hidden",
-                    background: contentImageUrl ? "none" : "#f6f6f7",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {contentImageUrl ? (
-                    <img src={contentImageUrl} alt="Content" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                  ) : (
-                    <Text as="span" variant="bodySm" tone="subdued">No image</Text>
-                  )}
-                </div>
-                <InlineStack gap="100" wrap>
-                  <Button size="slim" onClick={() => contentFileInputRef.current?.click()} loading={contentImageUploading}>Upload</Button>
-                  <Button size="slim" variant="plain" onClick={() => openLibrary("content")}>Library</Button>
-                  {contentImageUrl && <Button size="slim" variant="plain" tone="critical" onClick={() => setContentImageUrl("")}>Remove</Button>}
-                </InlineStack>
-                {contentUploadError && <Banner tone="critical" onDismiss={() => setContentUploadError("")}>{contentUploadError}</Banner>}
+                <ImagePicker value={contentImageUrl} onChange={setContentImageUrl} previewAlt="Content" previewMaxHeight={120} />
               </div>
 
               <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
@@ -517,23 +424,15 @@ export default function TagsPage() {
                   }
                 />
               </div>
-              <BlockStack gap="100">
-                <Text as="p" variant="bodyMd">
-                  Filter image{" "}
-                  <Text as="span" variant="bodySm" tone="subdued">(swatch in tag filter)</Text>
-                </Text>
-                <InlineStack gap="200" blockAlign="center">
-                  {imageUrl ? (
-                    <img src={imageUrl} alt="Filter" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: "50%", border: "1px solid #ccc", flexShrink: 0 }} />
-                  ) : (
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: color, border: "1px solid #ccc", flexShrink: 0 }} />
-                  )}
-                  <Button size="slim" onClick={() => fileInputRef.current?.click()} loading={imageUploading}>Upload</Button>
-                  <Button size="slim" variant="plain" onClick={() => openLibrary("filter")}>Library</Button>
-                  {imageUrl && <Button size="slim" variant="plain" tone="critical" onClick={() => setImageUrl("")}>Remove</Button>}
-                </InlineStack>
-                {uploadError && <Banner tone="critical" onDismiss={() => setUploadError("")}>{uploadError}</Banner>}
-              </BlockStack>
+              <div style={{ width: 200 }}>
+                <BlockStack gap="100">
+                  <Text as="p" variant="bodyMd">
+                    Filter image{" "}
+                    <Text as="span" variant="bodySm" tone="subdued">(swatch in tag filter)</Text>
+                  </Text>
+                  <ImagePicker value={imageUrl} onChange={setImageUrl} previewAlt="Filter" previewMaxHeight={120} />
+                </BlockStack>
+              </div>
             </div>
           </BlockStack>
         </Modal.Section>
@@ -582,39 +481,6 @@ export default function TagsPage() {
               </Text>
               <ProgressBar progress={progress} size="small" tone={deletePhase === "done" ? "success" : "highlight"} />
             </BlockStack>
-          )}
-        </Modal.Section>
-      </Modal>
-
-      <Modal
-        open={showLibrary}
-        onClose={() => setShowLibrary(false)}
-        title="Image library"
-        size="large"
-      >
-        <Modal.Section>
-          {filesFetcher.state === "loading" ? (
-            <InlineStack align="center"><Spinner /></InlineStack>
-          ) : filesFetcher.data?.files?.length ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 12 }}>
-              {filesFetcher.data.files.map((url) => (
-                <div
-                  key={url}
-                  onClick={() => {
-                    if (libraryTarget === "content") setContentImageUrl(url);
-                    else setImageUrl(url);
-                    setShowLibrary(false);
-                  }}
-                  style={{ cursor: "pointer", borderRadius: 8, overflow: "hidden", border: "2px solid transparent", transition: "border 0.15s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#008060")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
-                >
-                  <img src={url} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block" }} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Text as="p" tone="subdued">No images uploaded yet.</Text>
           )}
         </Modal.Section>
       </Modal>

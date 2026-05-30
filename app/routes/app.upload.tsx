@@ -5,9 +5,13 @@ import { authenticate } from "../shopify.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
 
-  const res = await admin.graphql(`#graphql
-    query {
-      files(first: 50, sortKey: CREATED_AT, reverse: true) {
+  const after = new URL(request.url).searchParams.get("after");
+
+  const res = await admin.graphql(
+    `#graphql
+    query LibraryFiles($after: String) {
+      files(first: 24, after: $after, sortKey: CREATED_AT, reverse: true) {
+        pageInfo { hasNextPage endCursor }
         edges {
           node {
             fileStatus
@@ -19,15 +23,25 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         }
       }
     }
-  `);
+  `,
+    { variables: { after: after || null } },
+  );
 
   const data = await res.json();
+  const pageInfo = data.data?.files?.pageInfo ?? { hasNextPage: false, endCursor: null };
   const files = (data.data?.files?.edges ?? [])
     .map((e: any) => e.node)
     .filter((n: any) => n?.image?.url && n?.fileStatus === "READY")
-    .map((n: any) => n.image.url);
+    .map((n: any) => {
+      const url: string = n.image.url;
+      // Derive filename + type from the CDN URL (e.g. ".../M_Red_Currant_SS.jpg?v=123")
+      const path = url.split("?")[0];
+      const filename = decodeURIComponent(path.substring(path.lastIndexOf("/") + 1)) || "image";
+      const ext = filename.includes(".") ? filename.split(".").pop()! : "";
+      return { url, filename, type: ext.toUpperCase() };
+    });
 
-  return json({ files });
+  return json({ files, pageInfo });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {

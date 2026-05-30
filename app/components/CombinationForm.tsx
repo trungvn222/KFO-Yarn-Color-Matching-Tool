@@ -1,5 +1,5 @@
-import { forwardRef, useImperativeHandle, useState, useRef } from "react";
-import { useNavigate, useSubmit, useNavigation, useFetcher } from "@remix-run/react";
+import { forwardRef, useImperativeHandle, useState } from "react";
+import { useNavigate, useSubmit, useNavigation } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -11,16 +11,14 @@ import {
   InlineStack,
   Text,
   Box,
-  Banner,
   Thumbnail,
   TextField,
-  Modal,
-  Spinner,
   Combobox,
   Listbox,
   AutoSelection,
 } from "@shopify/polaris";
 import { RichTextEditor } from "./RichTextEditor";
+import { ImagePicker } from "./ImagePicker";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import {
   DndContext,
@@ -138,12 +136,7 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
   const [name, setName] = useState(combination?.name ?? "");
   const [description, setDescription] = useState((combination as any)?.description ?? "");
   const [imageUrl, setImageUrl] = useState(combination?.image_url ?? "");
-  const [imageUploading, setImageUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-  const [showLibrary, setShowLibrary] = useState(false);
-  const filesFetcher = useFetcher<{ files: string[] }>();
   const [position, setPosition] = useState(String(combination?.position ?? 0));
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const saving = mode === "modal" ? (externalSaving ?? false) : navigation.state !== "idle";
 
@@ -162,39 +155,6 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
   function handleCancel() {
     if (onCancel) onCancel();
     else navigate("/app");
-  }
-
-  function openLibrary() {
-    setShowLibrary(true);
-    if (filesFetcher.state === "idle" && !filesFetcher.data) {
-      filesFetcher.load("/app/upload");
-    }
-  }
-
-  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageUploading(true);
-    try {
-      const token = await shopify.idToken();
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/app/upload", {
-        method: "POST",
-        body: fd,
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok && res.headers.get("content-type")?.includes("text/html")) {
-        setUploadError(`Auth error ${res.status} — try reinstalling the app`);
-        return;
-      }
-      const data = await res.json();
-      if (data.url) { setImageUrl(data.url); setUploadError(""); }
-      else setUploadError(data.error ?? "Upload failed");
-    } finally {
-      setImageUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
   }
 
   const [selectedTags, setSelectedTags] = useState<string[]>(combination?.tags ?? []);
@@ -345,42 +305,7 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
           <Card>
             <BlockStack gap="300">
               <Text as="h2" variant="headingMd">Thumbnail</Text>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={handleImageUpload}
-              />
-              {imageUrl && (
-                <img
-                  src={imageUrl}
-                  alt="Combination"
-                  style={{ width: "100%", borderRadius: 8, objectFit: "cover", maxHeight: 200 }}
-                />
-              )}
-              <InlineStack gap="200" wrap>
-                <Button
-                  size="slim"
-                  onClick={() => fileInputRef.current?.click()}
-                  loading={imageUploading}
-                >
-                  Upload
-                </Button>
-                <Button size="slim" variant="plain" onClick={openLibrary}>
-                  Browse library
-                </Button>
-                {imageUrl && (
-                  <Button size="slim" variant="plain" tone="critical" onClick={() => setImageUrl("")}>
-                    Remove
-                  </Button>
-                )}
-              </InlineStack>
-              {uploadError && (
-                <Banner tone="critical" onDismiss={() => setUploadError("")}>
-                  {uploadError}
-                </Banner>
-              )}
+              <ImagePicker value={imageUrl} onChange={setImageUrl} previewAlt="Combination" />
             </BlockStack>
           </Card>
 
@@ -492,35 +417,6 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
           </BlockStack>
         </Layout.Section>
       </Layout>
-
-      <Modal
-        open={showLibrary}
-        onClose={() => setShowLibrary(false)}
-        title="Image library"
-        size="large"
-      >
-        <Modal.Section>
-          {filesFetcher.state === "loading" ? (
-            <InlineStack align="center"><Spinner /></InlineStack>
-          ) : filesFetcher.data?.files?.length ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 12 }}>
-              {filesFetcher.data.files.map((url) => (
-                <div
-                  key={url}
-                  onClick={() => { setImageUrl(url); setShowLibrary(false); }}
-                  style={{ cursor: "pointer", borderRadius: 8, overflow: "hidden", border: "2px solid transparent", transition: "border 0.15s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#008060")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
-                >
-                  <img src={url} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block" }} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Text as="p" tone="subdued">No images uploaded yet.</Text>
-          )}
-        </Modal.Section>
-      </Modal>
     </>
   );
 
