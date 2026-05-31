@@ -312,7 +312,11 @@ export default function ColorsPage() {
 
   // Pick a product and bind its title → content title and description → description
   async function bindFromProduct() {
-    const picked = await shopify.resourcePicker({ type: "product", multiple: false });
+    const picked = await shopify.resourcePicker({
+      type: "product",
+      multiple: false,
+      filter: { variants: false },
+    });
     if (!picked || picked.length === 0) return;
     const p: any = picked[0];
     if (p.title) setContentTitle(p.title);
