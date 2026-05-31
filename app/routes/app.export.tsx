@@ -48,10 +48,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const colorMap = Object.fromEntries(colorsRes.hits.map((c) => [c.objectID, c.name]));
 
-  const header = ["name", "description", "position", "image_url", "colors", "tags", "variant_ids"];
+  const header = ["name", "popup_name", "description", "position", "image_url", "colors", "tags", "variant_ids"];
 
   const dataRows = combinationsRes.hits.map((c) => [
     c.name,
+    (c as any).popup_name ?? "",
     (c as any).description ?? "",
     String(c.position ?? 0),
     c.image_url ?? "",

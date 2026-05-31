@@ -106,6 +106,7 @@ function SortableProductRow({
 export interface CombinationFormHandle {
   getData: () => {
     name: string;
+    popup_name: string;
     description: string;
     image_url: string;
     position: number;
@@ -134,6 +135,7 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
   const shopify = useAppBridge();
 
   const [name, setName] = useState(combination?.name ?? "");
+  const [popupName, setPopupName] = useState(combination?.popup_name ?? "");
   const [description, setDescription] = useState((combination as any)?.description ?? "");
   const [imageUrl, setImageUrl] = useState(combination?.image_url ?? "");
   const [position, setPosition] = useState(String(combination?.position ?? 0));
@@ -143,6 +145,7 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
   useImperativeHandle(ref, () => ({
     getData: () => ({
       name,
+      popup_name: popupName,
       description,
       image_url: imageUrl,
       position: Number(position),
@@ -233,7 +236,7 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
 
   function handleSave() {
     submit(
-      { data: JSON.stringify({ name, description, image_url: imageUrl, position: Number(position), tags: selectedTags, colors: selectedColors, products }) },
+      { data: JSON.stringify({ name, popup_name: popupName, description, image_url: imageUrl, position: Number(position), tags: selectedTags, colors: selectedColors, products }) },
       { method: "post" }
     );
   }
@@ -255,6 +258,13 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
                 </Box>
                 <Button onClick={autoName}>Auto-name</Button>
               </InlineStack>
+              <TextField
+                label="Combination name (popup)"
+                value={popupName}
+                onChange={setPopupName}
+                autoComplete="off"
+                helpText="Shown as the title in the storefront popup. Leave blank to use Combination name."
+              />
               <RichTextEditor
                 label="Description"
                 value={description}

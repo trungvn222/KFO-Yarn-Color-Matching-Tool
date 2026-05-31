@@ -9,6 +9,8 @@ export interface KfoProduct {
 export interface KfoCombination {
   objectID: string;
   name: string;
+  /** Optional name shown in the storefront popup; falls back to `name`. */
+  popup_name?: string;
   image_url: string;
   position: number;
   tags: string[];

@@ -37,6 +37,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     body: {
       objectID,
       name: data.name,
+      popup_name: data.popup_name || "",
       description: data.description || "",
       image_url: data.image_url || "",
       position: data.position ?? 0,

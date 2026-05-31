@@ -201,7 +201,7 @@
         </div>
         <div class="kfo-modal-right">
           <button class="kfo-modal-close" id="kfo-fav-modal-close">&#x2715;</button>
-          <h2 class="kfo-modal-title">${combo.name.toUpperCase()}</h2>
+          <h2 class="kfo-modal-title">${(combo.popup_name || combo.name).toUpperCase()}</h2>
           <button class="kfo-modal-fav-btn ${favActive ? 'active' : ''}" id="kfo-fav-modal-fav">
             <img src="${favActive ? heartActiveUrl : heartUrl}" class="kfo-modal-fav-icon" alt="" />
             ${favActive ? 'ADDED TO FAVORITE' : 'ADD TO FAVORITE'}

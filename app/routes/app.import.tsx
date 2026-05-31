@@ -74,6 +74,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const objects = rows.map((row: any) => ({
     objectID: randomUUID(),
     name: row.name,
+    popup_name: row.popup_name ?? "",
     description: row.description ?? "",
     position: Number(row.position) || 0,
     image_url: row.image_url ?? "",
@@ -94,6 +95,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 // ── CSV row after parsing ──────────────────────────────────────────────────
 interface CsvRow {
   name: string;
+  popup_name?: string;
   description?: string;
   position?: string;
   image_url?: string;
@@ -105,6 +107,7 @@ interface CsvRow {
 interface PreviewRow {
   raw: CsvRow;
   name: string;
+  popup_name: string;
   description: string;
   position: number;
   image_url: string;
@@ -149,6 +152,7 @@ function validateRow(raw: CsvRow, allColors: KfoColor[], allTags: KfoTag[]): Pre
   return {
     raw,
     name,
+    popup_name: (raw.popup_name ?? "").trim(),
     description: (raw.description ?? "").trim(),
     position: Number(raw.position) || 0,
     image_url: (raw.image_url ?? "").trim(),
@@ -210,6 +214,7 @@ export default function ImportPage() {
     if (!validRows.length) return;
     const data = validRows.map((r) => ({
       name: r.name,
+      popup_name: r.popup_name,
       description: r.description,
       position: r.position,
       image_url: r.image_url,
