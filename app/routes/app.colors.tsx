@@ -23,7 +23,9 @@ import {
   Select,
   Box,
   Divider,
+  Tooltip,
 } from "@shopify/polaris";
+import { DatabaseConnectIcon } from "@shopify/polaris-icons";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { RichTextEditor } from "../components/RichTextEditor";
@@ -308,6 +310,15 @@ export default function ColorsPage() {
     setProgress(0);
   }
 
+  // Pick a product and bind its title → content title and description → description
+  async function bindFromProduct() {
+    const picked = await shopify.resourcePicker({ type: "product", multiple: false });
+    if (!picked || picked.length === 0) return;
+    const p: any = picked[0];
+    if (p.title) setContentTitle(p.title);
+    setDescription(p.descriptionHtml ?? "");
+  }
+
   function openCreate() {
     setEditing(null);
     setName("");
@@ -477,14 +488,27 @@ export default function ColorsPage() {
               />
             )}
 
-            {/* Content title */}
-            <TextField
-              label="Content title"
-              value={contentTitle}
-              onChange={setContentTitle}
-              autoComplete="off"
-              helpText="Displayed in the section header. Leave blank to use Name."
-            />
+            {/* Content title + connect-to-product dynamic source */}
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <div style={{ flex: 1 }}>
+                <TextField
+                  label="Content title"
+                  value={contentTitle}
+                  onChange={setContentTitle}
+                  autoComplete="off"
+                  helpText="Displayed in the section header. Leave blank to use Name."
+                />
+              </div>
+              <div style={{ marginTop: 23 }}>
+                <Tooltip content="Connect dynamic source — fill title & description from a product">
+                  <Button
+                    icon={DatabaseConnectIcon}
+                    onClick={bindFromProduct}
+                    accessibilityLabel="Connect dynamic source"
+                  />
+                </Tooltip>
+              </div>
+            </div>
 
             {/* Row 2: Content image (left) + Description (right) — same height */}
             <div style={{ display: "flex", gap: 16, alignItems: "stretch" }}>
