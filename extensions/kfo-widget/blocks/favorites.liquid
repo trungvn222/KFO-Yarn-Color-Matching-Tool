@@ -11,6 +11,20 @@
 
   {{ 'kfo-widget.css' | asset_url | stylesheet_tag }}
   <script src="{{ 'kfo-favorites.js' | asset_url }}" defer></script>
+
+  {% if block.settings.atc_success_script != blank %}
+    <script>
+      // Runs after a product is successfully added to cart from the KFO favorites popup.
+      // Available context: detail.variantId, detail.numericId, detail.button, detail.combination
+      window.kfoOnAddToCart = function (detail) {
+        try {
+          {{ block.settings.atc_success_script }}
+        } catch (e) {
+          console.error('[KFO] add-to-cart success script error:', e);
+        }
+      };
+    </script>
+  {% endif %}
 {% else %}
   <p style="color: #bf0711; padding: 16px; border: 1px solid #bf0811; border-radius: 4px;">
     KFO Favorites: Please configure Algolia credentials in the Theme Editor.
@@ -46,6 +60,16 @@
       "id": "combinations_index",
       "label": "Combinations index",
       "default": "kfo_combinations"
+    },
+    {
+      "type": "header",
+      "content": "Add to cart"
+    },
+    {
+      "type": "textarea",
+      "id": "atc_success_script",
+      "label": "On add-to-cart success — custom JS",
+      "info": "JavaScript to run after a product is added to cart from the favorites popup. Available: detail.variantId, detail.numericId, detail.button, detail.combination. Example: document.querySelector('cart-drawer')?.open();"
     }
   ]
 }

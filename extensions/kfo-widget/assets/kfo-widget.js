@@ -564,6 +564,15 @@
             document.dispatchEvent(new CustomEvent('cart:refresh'));
             document.dispatchEvent(new CustomEvent('theme:cart:open'));
 
+            // Merchant-defined success hook (set in Theme Editor → "On add-to-cart success")
+            if (typeof window.kfoOnAddToCart === 'function') {
+              try {
+                window.kfoOnAddToCart({ variantId, numericId, button: btn, combination: combo });
+              } catch (e) {
+                console.error('[KFO] kfoOnAddToCart hook error:', e);
+              }
+            }
+
             setTimeout(() => {
               btn.textContent = 'ADD TO CART';
               btn.style.background = '';
