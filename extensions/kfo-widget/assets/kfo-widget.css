@@ -102,11 +102,14 @@
   align-items: center;
   justify-content: center;
   background: none;
-  border: 1px solid #9ca3af;
-  border-radius: 20px;
-  padding: 11px 20px;
+  border: 1px solid #6A6A6A;
+  border-radius: 100px;
+  min-height: 44px;
+  padding: 6px 20px;
+  font-family: 'Raleway', sans-serif;
   font-size: 14px;
   font-weight: 600;
+  line-height: 1;
   letter-spacing: 1.12px;
   text-transform: uppercase;
   color: #6A6A6A;
@@ -116,8 +119,8 @@
   transition: border-color 0.15s, color 0.15s;
 }
 .kfo-see-more-btn:hover {
-  border-color: #6A6A6A;
-  color: #111;
+  border-color: #3D3A35;
+  color: #3D3A35;
 }
 
 /* Tag badge filter */
@@ -322,7 +325,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.5);
-  z-index: 99;
+  z-index: 10000;
   align-items: center;
   justify-content: center;
   padding: 16px;
@@ -470,18 +473,24 @@
 }
 .kfo-add-to-cart-btn {
   width: 100%;
+  height: 44px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
-  border: 1px solid #111;
-  padding: 9px 4px;
-  font-size: 18px;
+  border: 1px solid #3D3A35;
+  padding: 0 4px;
+  font-family: 'Raleway', sans-serif;
+  font-size: 14px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  color: #111;
+  color: #3D3A35;
   transition: background 0.15s, color 0.15s;
 }
 .kfo-add-to-cart-btn:hover {
-  background: #111;
+  background: #3D3A35;
   color: #fff;
 }
 
@@ -628,6 +637,26 @@
 }
 .kfo-show-all-card:hover .kfo-show-all-overlay {
   background: rgba(255, 255, 255, 0.88);
+}
+.kfo-show-all-card.is-loading {
+  cursor: wait;
+  pointer-events: none;
+}
+.kfo-show-all-card.is-loading .kfo-show-all-overlay {
+  background: rgba(255, 255, 255, 0.88);
+}
+.kfo-show-all-card.is-loading .kfo-show-all-overlay > * {
+  visibility: hidden;
+}
+.kfo-show-all-card.is-loading .kfo-show-all-overlay::after {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #6A6A6A;
+  border-radius: 50%;
+  animation: kfo-spin 0.7s linear infinite;
 }
 .kfo-load-more-btn {
   margin-top: 16px;
@@ -800,15 +829,13 @@
     right: 12px;
   }
   .kfo-modal-title {
+    font-family: 'Raleway', sans-serif;
     font-size: 20px;
     font-weight: 400;
     letter-spacing: 0;
     text-align: center;
     color: #3D3A35;
     margin: 0;
-  }
-  .kfo-modal-fav-btn {
-    display: none;
   }
   .kfo-modal-desc {
     font-family: 'Roboto', sans-serif;
@@ -850,6 +877,12 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 10px 10px;
   }
+  /* SEE MORE / SEE LESS on its own row, aligned left */
+  .kfo-see-more-btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 4px;
+  }
   .kfo-grid,
   .kfo-section-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -886,5 +919,94 @@
   }
   .kfo-section-desc {
     font-size: 14px;
+  }
+}
+
+/* ── PC-only overrides (desktop ≥ 769px) ─────────────── */
+@media (min-width: 769px) {
+  /* 1- Combination name & description width 1280 -> 500px; image 480x278 -> 570x331 */
+  .kfo-section-header {
+    /* Gap between combination header and color grid */
+    margin-bottom: 60px;
+  }
+  .kfo-section-img-wrap {
+    width: 570px;
+    max-width: 570px;
+    height: 331px;
+    min-height: 0;
+  }
+  .kfo-section-info {
+    flex: 0 0 500px;
+    width: 500px;
+    /* 2- Align name & description left + vertically centered (middle) */
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Remove top/bottom padding on PC, keep horizontal */
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  /* 3- Card image 233 -> 254; View Detail button 225x47 -> 156x44 */
+  .kfo-grid,
+  .kfo-section-grid {
+    grid-template-columns: repeat(auto-fill, minmax(254px, 1fr));
+    /* 4- Gap columns 32 -> 48px, rows 32 -> 60px */
+    gap: 60px 48px;
+  }
+  .kfo-view-detail-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 156px;
+    height: 44px;
+    margin: 0 auto;
+    padding: 0 12px;
+  }
+
+  /* 5- Spacing between sections 40 -> 120px */
+  .kfo-sections {
+    gap: 120px;
+  }
+
+  /* Popup: size 820x419 -> 1200x630; image 369x419 -> 550x550 */
+  .kfo-modal {
+    max-width: 1200px;
+    height: 630px;
+  }
+  .kfo-modal-left {
+    flex: 0 0 630px;
+    box-sizing: border-box;
+    padding: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .kfo-modal-main-img,
+  .kfo-modal-main-img--placeholder {
+    width: 550px;
+    height: 550px;
+    flex-shrink: 0;
+  }
+
+  /* 4- Restyle modal title: Roboto->Raleway, 18->28px, 600->400, lh 1.4->1.2 */
+  .kfo-modal-title {
+    font-family: 'Raleway', sans-serif;
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.2;
+    /* Spacing between title and content below */
+    margin-bottom: 40px;
+  }
+  /* Content (description) font size + spacing to products grid */
+  .kfo-modal-desc {
+    font-size: 18px;
+    margin-bottom: 40px;
+  }
+  /* 9- Product image 196x196 -> 160x160 (fixed 160px columns) */
+  .kfo-modal-products-grid {
+    grid-template-columns: repeat(2, 160px);
   }
 }

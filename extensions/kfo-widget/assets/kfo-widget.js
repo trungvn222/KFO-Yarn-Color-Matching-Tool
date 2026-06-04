@@ -56,6 +56,11 @@
     let debounceTimer  = null;
     const sectionPerPage = {}; // colorId → hitsPerPage shown so far
     const COLORS_COLLAPSED = 8;
+    const COLORS_COLLAPSED_MOBILE = 4;
+    const colorsCollapsedCount = () =>
+      window.matchMedia('(max-width: 480px)').matches
+        ? COLORS_COLLAPSED_MOBILE
+        : COLORS_COLLAPSED;
     let colorsExpanded = false;
     let sectionObserver = null;
 
@@ -148,11 +153,29 @@
       });
     });
 
+    // Re-render color filters when crossing the mobile breakpoint so the
+    // collapsed count (4 on mobile, 8 on desktop) stays in sync.
+    if (showColors) {
+      let lastCollapsed = colorsCollapsedCount();
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          const next = colorsCollapsedCount();
+          if (next !== lastCollapsed) {
+            lastCollapsed = next;
+            renderColorFilters();
+          }
+        }, 150);
+      });
+    }
+
     // --- Filter renderers ---
     function renderColorFilters() {
       const el = document.getElementById('kfo-color-filters');
-      const visible = colorsExpanded ? allColors : allColors.slice(0, COLORS_COLLAPSED);
-      const hasMore = !colorsExpanded && allColors.length > COLORS_COLLAPSED;
+      const collapsed = colorsCollapsedCount();
+      const visible = colorsExpanded ? allColors : allColors.slice(0, collapsed);
+      const hasToggle = allColors.length > collapsed;
 
       el.innerHTML = visible.map((c) => `
         <button class="kfo-color-item ${selectedColors.includes(c.objectID) ? 'active' : ''}" data-id="${c.objectID}">
@@ -162,8 +185,8 @@
           }
           <span class="kfo-color-name">${c.name}</span>
         </button>
-      `).join('') + (hasMore ? `
-        <button class="kfo-see-more-btn" id="kfo-see-more">SEE MORE</button>
+      `).join('') + (hasToggle ? `
+        <button class="kfo-see-more-btn" id="kfo-see-toggle">${colorsExpanded ? 'SEE LESS' : 'SEE MORE'}</button>
       ` : '');
 
       el.querySelectorAll('.kfo-color-item').forEach((btn) => {
@@ -182,8 +205,8 @@
         });
       });
 
-      el.querySelector('#kfo-see-more')?.addEventListener('click', () => {
-        colorsExpanded = true;
+      el.querySelector('#kfo-see-toggle')?.addEventListener('click', () => {
+        colorsExpanded = !colorsExpanded;
         renderColorFilters();
       });
     }
@@ -364,9 +387,13 @@
         card.addEventListener('keydown', e => { if (e.key === 'Enter') openModal(combo, colorMap); });
       });
 
-      body.querySelector('.kfo-show-all-card')?.addEventListener('click', async () => {
+      const showAllCard = body.querySelector('.kfo-show-all-card');
+      showAllCard?.addEventListener('click', async () => {
+        // Avoid double-clicks; keep the current grid visible while loading so the
+        // section height only grows (no collapse) — prevents the page from jumping.
+        if (showAllCard.classList.contains('is-loading')) return;
+        showAllCard.classList.add('is-loading');
         sectionPerPage[colorId] = res.nbHits;
-        body.innerHTML = '<div class="kfo-loading"><span class="kfo-spinner"></span></div>';
         await loadSectionCards(colorId, sectionEl, colorMap);
       });
     }
@@ -508,7 +535,7 @@
             <img src="${favActive ? heartActiveUrl : heartUrl}" class="kfo-modal-fav-icon" alt="" />
             ${favActive ? 'ADDED TO FAVORITE' : 'ADD TO FAVORITE'}
           </button>
-          ${combo.description ? `<p class="kfo-modal-desc">${combo.description}</p>` : ''}
+          ${combo.description ? `<div class="kfo-modal-desc">${combo.description}</div>` : ''}
           <p class="kfo-cart-msg" id="kfo-cart-msg"></p>
           <div class="kfo-modal-products-grid">
             ${products.map((p) => `
