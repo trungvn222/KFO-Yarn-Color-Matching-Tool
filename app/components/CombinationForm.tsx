@@ -231,7 +231,7 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
 
   function autoName() {
     const parts = products.map((p) => p.product_name).filter(Boolean);
-    if (parts.length) setName(parts.join(" + "));
+    if (parts.length) setPopupName(parts.join(" + "));
   }
 
   function handleSave() {
@@ -247,24 +247,24 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
         <Layout.Section>
           <Card>
             <BlockStack gap="400">
+              <TextField
+                label="Secondary Yarn name"
+                value={name}
+                onChange={setName}
+                autoComplete="off"
+              />
               <InlineStack gap="200" blockAlign="end">
                 <Box width="100%">
                   <TextField
-                    label="Combination name"
-                    value={name}
-                    onChange={setName}
+                    label="Combination name (popup)"
+                    value={popupName}
+                    onChange={setPopupName}
                     autoComplete="off"
+                    helpText="Shown as the title in the storefront popup. Leave blank to use Combination name."
                   />
                 </Box>
                 <Button onClick={autoName}>Auto-name</Button>
               </InlineStack>
-              <TextField
-                label="Combination name (popup)"
-                value={popupName}
-                onChange={setPopupName}
-                autoComplete="off"
-                helpText="Shown as the title in the storefront popup. Leave blank to use Combination name."
-              />
               <RichTextEditor
                 label="Description"
                 value={description}
