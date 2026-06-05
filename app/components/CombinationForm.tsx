@@ -231,7 +231,14 @@ export const CombinationForm = forwardRef<CombinationFormHandle, Props>(function
 
   function autoName() {
     const parts = products.map((p) => p.product_name).filter(Boolean);
-    if (parts.length) setPopupName(parts.join(" + "));
+    if (!parts.length) {
+      shopify.toast.show("Add at least one product to auto-generate the popup name.", {
+        isError: true,
+      });
+      return;
+    }
+    setPopupName(parts.join(" + "));
+    shopify.toast.show("Popup name generated from products.");
   }
 
   function handleSave() {
