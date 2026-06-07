@@ -8,6 +8,14 @@
   box-sizing: border-box;
 }
 
+/* Favorites galleries inherit the theme body font (Roboto) — force the brand
+   font (Raleway) like #kfo-widget so card names + VIEW DETAIL match. */
+#kfo-favorites,
+#kfo-product-favorites {
+  font-family: 'Raleway', sans-serif;
+  color: inherit;
+}
+
 /* Header */
 .kfo-header {
   display: flex;
@@ -900,6 +908,17 @@
     padding: 11px 8px;
     letter-spacing: 1.5px;
   }
+  /* Favorites gallery mobile: View Detail button 161x41 -> 109x29 */
+  #kfo-favorites .kfo-view-detail-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 109px;
+    height: 29px;
+    margin: 0 auto;
+    padding: 0 8px;
+  }
   .kfo-modal-products-grid { gap: 10px; }
   .kfo-section-header {
     flex-direction: column;
@@ -964,6 +983,11 @@
     height: 44px;
     margin: 0 auto;
     padding: 0 12px;
+  }
+
+  /* Favorites gallery: larger cards — image 254 -> 400 */
+  #kfo-favorites .kfo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   }
 
   /* 5- Spacing between sections 40 -> 120px */
