@@ -94,10 +94,10 @@
         ${showColors ? `
           <div class="kfo-filter-header">
             <span class="kfo-filter-label">${colorFilterLabel}</span>
-            <button class="kfo-clear-btn" id="kfo-clear-btn" style="display:none">CLEAR ALL</button>
+            <button class="kfo-clear-btn" id="kfo-clear-btn">CLEAR ALL</button>
           </div>
           <div class="kfo-color-grid" id="kfo-color-filters"></div>
-        ` : '<button class="kfo-clear-btn" id="kfo-clear-btn" style="display:none">CLEAR ALL</button>'}
+        ` : '<button class="kfo-clear-btn" id="kfo-clear-btn">CLEAR ALL</button>'}
         ${showTags ? '<div class="kfo-filter-group" id="kfo-tag-filters"></div>' : ''}
       </div>
       <div id="kfo-grid"></div>
@@ -135,8 +135,10 @@
       page           = 0;
       const searchEl = root.querySelector('.kfo-search');
       if (searchEl) searchEl.value = '';
-      if (showColors) renderColorFilters();
-      if (showTags)   renderTagFilters();
+      // Sync active states in place instead of re-rendering — re-rendering
+      // would reload every swatch image and cause flicker.
+      if (showColors) syncColorActiveStates();
+      if (showTags)   syncTagActiveStates();
       updateClearBtn();
       renderContent();
     });
@@ -170,24 +172,61 @@
       });
     }
 
+    // Update active classes on existing filter buttons without re-rendering
+    // (preserves <img> elements so swatch images don't reload / flicker).
+    function syncColorActiveStates() {
+      document.querySelectorAll('#kfo-color-filters .kfo-color-item').forEach((btn) => {
+        btn.classList.toggle('active', selectedColors.includes(btn.dataset.id));
+      });
+    }
+
+    function syncTagActiveStates() {
+      document.querySelectorAll('#kfo-tag-filters .kfo-tag-badge').forEach((btn) => {
+        const slug = btn.dataset.slug;
+        const isActive = selectedTags.includes(slug);
+        const t = allTags.find((x) => x.slug === slug);
+        btn.classList.toggle('active', isActive);
+        btn.style.cssText = isActive && t ? `background:${t.color};border-color:${t.color}` : '';
+      });
+    }
+
+    // Show/hide the collapsed overflow via CSS instead of adding/removing
+    // DOM nodes — keeps swatch <img> elements alive so they don't reload.
+    function applyColorsCollapsed() {
+      const el = document.getElementById('kfo-color-filters');
+      const collapsed = colorsCollapsedCount();
+      el.classList.toggle('kfo-colors-collapsed', !colorsExpanded);
+      el.querySelectorAll('.kfo-color-item').forEach((btn, i) => {
+        btn.classList.toggle('kfo-color-item--overflow', i >= collapsed);
+      });
+      const toggleBtn = el.querySelector('#kfo-see-toggle');
+      if (toggleBtn) toggleBtn.textContent = colorsExpanded ? 'SEE LESS' : 'SEE MORE';
+    }
+
     // --- Filter renderers ---
     function renderColorFilters() {
       const el = document.getElementById('kfo-color-filters');
-      const collapsed = colorsCollapsedCount();
-      const visible = colorsExpanded ? allColors : allColors.slice(0, collapsed);
-      const hasToggle = allColors.length > collapsed;
+      const hasToggle = allColors.length > colorsCollapsedCount();
 
-      el.innerHTML = visible.map((c) => `
+      // Render every color once; collapsing only toggles CSS visibility.
+      el.innerHTML = allColors.map((c) => `
         <button class="kfo-color-item ${selectedColors.includes(c.objectID) ? 'active' : ''}" data-id="${c.objectID}">
-          ${c.image_url
-            ? `<img class="kfo-color-swatch" src="${c.image_url}" alt="${c.name}" />`
-            : `<span class="kfo-color-swatch" style="background:${c.hex}"></span>`
-          }
-          <span class="kfo-color-name">${c.name}</span>
+          <span class="kfo-color-item-main">
+            ${c.image_url
+              ? `<img class="kfo-color-swatch" src="${c.image_url}" alt="${c.name}" />`
+              : `<span class="kfo-color-swatch" style="background:${c.hex}"></span>`
+            }
+            <span class="kfo-color-name">${c.name}</span>
+          </span>
+          <span class="kfo-color-close" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+          </span>
         </button>
       `).join('') + (hasToggle ? `
         <button class="kfo-see-more-btn" id="kfo-see-toggle">${colorsExpanded ? 'SEE LESS' : 'SEE MORE'}</button>
       ` : '');
+
+      applyColorsCollapsed();
 
       el.querySelectorAll('.kfo-color-item').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -199,7 +238,9 @@
             selectedColors = [...selectedColors, id];
           }
           page = 0;
-          renderColorFilters();
+          // Toggle only this button's state — avoid re-rendering the whole
+          // list, which would reload every swatch image and cause flicker.
+          btn.classList.toggle('active', selectedColors.includes(id));
           updateClearBtn();
           renderContent();
         });
@@ -207,7 +248,7 @@
 
       el.querySelector('#kfo-see-toggle')?.addEventListener('click', () => {
         colorsExpanded = !colorsExpanded;
-        renderColorFilters();
+        applyColorsCollapsed();
       });
     }
 
@@ -223,11 +264,15 @@
       el.querySelectorAll('.kfo-tag-badge').forEach((btn) => {
         btn.addEventListener('click', () => {
           const slug = btn.dataset.slug;
+          const t = allTags.find((x) => x.slug === slug);
           selectedTags = selectedTags.includes(slug)
             ? selectedTags.filter((x) => x !== slug)
             : [...selectedTags, slug];
           page = 0;
-          renderTagFilters();
+          // Toggle only this badge — avoid re-rendering the whole list.
+          const isActive = selectedTags.includes(slug);
+          btn.classList.toggle('active', isActive);
+          btn.style.cssText = isActive && t ? `background:${t.color};border-color:${t.color}` : '';
           updateClearBtn();
           renderContent();
         });
@@ -235,10 +280,9 @@
     }
 
     function updateClearBtn() {
+      // Clear All is always visible.
       const btn = document.getElementById('kfo-clear-btn');
-      const colorsChanged = JSON.stringify([...selectedColors].sort()) !== JSON.stringify([...defaultColors].sort());
-      const tagsChanged   = JSON.stringify([...selectedTags].sort())   !== JSON.stringify([...defaultTags].sort());
-      btn.style.display = (colorsChanged || tagsChanged || query) ? '' : 'none';
+      btn.style.display = '';
     }
 
     // --- Content rendering ---
@@ -325,6 +369,8 @@
           if (!entry.isIntersecting) return;
           const sectionEl = entry.target;
           sectionObserver.unobserve(sectionEl);
+          // Reveal happens inside loadSectionCards, only once we know the
+          // section actually has combinations (empty sections stay hidden).
           loadSectionCards(sectionEl.dataset.colorId, sectionEl, colorMap);
         });
       }, { rootMargin: '200px 0px' });
@@ -345,6 +391,9 @@
         sectionEl.style.display = 'none';
         return;
       }
+
+      // Has combinations → reveal the section now.
+      sectionEl.classList.add('kfo-section--visible');
 
       const remaining = res.nbHits - res.hits.length;
       // If more results exist: show first N-1 cards + "Show all" overlay on the Nth slot
