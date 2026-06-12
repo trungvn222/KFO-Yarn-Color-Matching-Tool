@@ -49,7 +49,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const client = await getMerchantAlgoliaClient(session.shop);
 
-  const [colorsRes, allIdsRes] = await Promise.all([
+  const [colorsRes, allIdsRes, combosFacetRes] = await Promise.all([
     client.searchSingleIndex<KfoColor>({
       indexName: INDEXES.colors,
       searchParams: { query: q, hitsPerPage: perPage, page },
@@ -58,11 +58,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       indexName: INDEXES.colors,
       searchParams: { query: "", hitsPerPage: 1000, attributesToRetrieve: ["objectID"] },
     }),
+    client.searchSingleIndex({
+      indexName: INDEXES.combinations,
+      searchParams: { query: "", hitsPerPage: 0, facets: ["colors"], maxValuesPerFacet: 1000 },
+    }),
   ]);
+
+  const colorCounts = (combosFacetRes.facets?.colors ?? {}) as Record<string, number>;
 
   return json({
     colors: colorsRes.hits,
     allIds: allIdsRes.hits.map((h) => h.objectID),
+    colorCounts,
     q,
     page: page + 1,
     perPage,
@@ -145,7 +152,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ColorsPage() {
-  const { colors, allIds, q, page, perPage, nbPages, nbHits } = useLoaderData<typeof loader>();
+  const { colors, allIds, colorCounts, q, page, perPage, nbPages, nbHits } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
@@ -372,6 +379,9 @@ export default function ColorsPage() {
       </BlockStack>
     </InlineStack>,
     c.hex,
+    <Badge tone={(colorCounts[c.objectID] ?? 0) > 0 ? "info" : undefined}>
+      {String(colorCounts[c.objectID] ?? 0)}
+    </Badge>,
     <InlineStack gap="200" blockAlign="center">
       {savingId === c.objectID ? (
         <Spinner size="small" />
@@ -422,8 +432,8 @@ export default function ColorsPage() {
               </InlineStack>
             ) : (
               <DataTable
-                columnContentTypes={["text", "text", "text"]}
-                headings={["Color", "Filter Color", "Actions"]}
+                columnContentTypes={["text", "text", "numeric", "text"]}
+                headings={["Color", "Filter Color", "Combinations", "Actions"]}
                 rows={rows}
               />
             )}

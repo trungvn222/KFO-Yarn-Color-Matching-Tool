@@ -7,6 +7,7 @@ import {
   Layout,
   Card,
   DataTable,
+  Badge,
   Button,
   Modal,
   TextField,
@@ -44,7 +45,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const client = await getMerchantAlgoliaClient(session.shop);
 
-  const [tagsRes, allIdsRes] = await Promise.all([
+  const [tagsRes, allIdsRes, combosFacetRes] = await Promise.all([
     client.searchSingleIndex<KfoTag>({
       indexName: INDEXES.tags,
       searchParams: { query: q, hitsPerPage: perPage, page },
@@ -53,11 +54,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       indexName: INDEXES.tags,
       searchParams: { query: "", hitsPerPage: 1000, attributesToRetrieve: ["objectID"] },
     }),
+    client.searchSingleIndex({
+      indexName: INDEXES.combinations,
+      searchParams: { query: "", hitsPerPage: 0, facets: ["tags"], maxValuesPerFacet: 1000 },
+    }),
   ]);
+
+  const tagCounts = (combosFacetRes.facets?.tags ?? {}) as Record<string, number>;
 
   return json({
     tags: tagsRes.hits,
     allIds: allIdsRes.hits.map((h) => h.objectID),
+    tagCounts,
     q,
     page: page + 1,
     perPage,
@@ -123,7 +131,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function TagsPage() {
-  const { tags, allIds, q, page, perPage, nbPages, nbHits } = useLoaderData<typeof loader>();
+  const { tags, allIds, tagCounts, q, page, perPage, nbPages, nbHits } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
@@ -273,6 +281,9 @@ export default function TagsPage() {
       </BlockStack>
     </InlineStack>,
     t.color,
+    <Badge tone={(tagCounts[t.slug] ?? 0) > 0 ? "info" : undefined}>
+      {String(tagCounts[t.slug] ?? 0)}
+    </Badge>,
     <InlineStack gap="200" blockAlign="center">
       {savingId === t.objectID ? (
         <Spinner size="small" />
@@ -322,8 +333,8 @@ export default function TagsPage() {
               </InlineStack>
             ) : (
               <DataTable
-                columnContentTypes={["text", "text", "text"]}
-                headings={["Tag", "Color", "Actions"]}
+                columnContentTypes={["text", "text", "numeric", "text"]}
+                headings={["Tag", "Color", "Combinations", "Actions"]}
                 rows={rows}
               />
             )}
