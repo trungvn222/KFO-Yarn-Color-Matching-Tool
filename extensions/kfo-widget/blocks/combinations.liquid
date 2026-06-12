@@ -15,6 +15,7 @@
     data-default-tags="{{ block.settings.default_tags | escape }}"
     data-heart-url="{{ 'kfo-heart.svg' | asset_url }}"
     data-heart-active-url="{{ 'kfo-heart-active.svg' | asset_url }}"
+    data-favorites-url="{{ block.settings.favorites_url }}"
     {{ block.shopify_attributes }}
   ></div>
 
@@ -134,6 +135,16 @@
       "id": "default_tags",
       "label": "Default selected tags",
       "info": "Tag slugs separated by commas, e.g. summer,pastel — copy from Admin > Tags"
+    },
+    {
+      "type": "header",
+      "content": "Favorites"
+    },
+    {
+      "type": "url",
+      "id": "favorites_url",
+      "label": "Favorites page link",
+      "info": "Where the 'VIEW FAVORITES' button in the toast points. Defaults to /pages/favorites."
     },
     {
       "type": "header",

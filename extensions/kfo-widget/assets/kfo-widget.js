@@ -36,6 +36,7 @@
     const colorFilterLabel = root.dataset.colorFilterLabel || 'FILTER BY COLORS:';
     const heartUrl         = root.dataset.heartUrl || '';
     const heartActiveUrl   = root.dataset.heartActiveUrl || heartUrl;
+    const favoritesUrl     = root.dataset.favoritesUrl || '/pages/favorites';
     const defaultColors = root.dataset.defaultColors ? root.dataset.defaultColors.split(',').map(s => s.trim()).filter(Boolean) : [];
     const defaultTags   = root.dataset.defaultTags   ? root.dataset.defaultTags.split(',').map(s => s.trim()).filter(Boolean)   : [];
 
@@ -74,6 +75,45 @@
       if (idx >= 0) favs.splice(idx, 1); else favs.push(id);
       localStorage.setItem(FAV_KEY, JSON.stringify(favs));
       window.dispatchEvent(new CustomEvent('kfo:favorites-changed'));
+    }
+
+    // --- "Added to favorite" toast ---
+    let toastEl = null;
+    let toastTimer = null;
+    function ensureToast() {
+      if (toastEl) return toastEl;
+      toastEl = document.createElement('div');
+      toastEl.className = 'kfo-toast';
+      toastEl.setAttribute('role', 'status');
+      toastEl.innerHTML = `
+        <div class="kfo-toast-thumb"></div>
+        <div class="kfo-toast-body">
+          <span class="kfo-toast-title">ADDED TO FAVORITE!</span>
+          <a class="kfo-toast-link" href="${favoritesUrl}">VIEW FAVORITES</a>
+        </div>
+        <button class="kfo-toast-close" type="button" aria-label="Close">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 1.20857L10.7914 0L6 4.79143L1.20857 0L0 1.20857L4.79143 6L0 10.7914L1.20857 12L6 7.20857L10.7914 12L12 10.7914L7.20857 6L12 1.20857Z" fill="currentColor"/></svg>
+        </button>
+      `;
+      document.body.appendChild(toastEl);
+      toastEl.querySelector('.kfo-toast-close').addEventListener('click', hideToast);
+      return toastEl;
+    }
+    function hideToast() {
+      clearTimeout(toastTimer);
+      toastEl?.classList.remove('kfo-toast--visible');
+    }
+    function showFavoriteToast(combo) {
+      const el = ensureToast();
+      const thumb = el.querySelector('.kfo-toast-thumb');
+      thumb.innerHTML = combo.image_url
+        ? `<img src="${combo.image_url}" alt="${combo.name || ''}" />`
+        : '';
+      // force reflow so re-triggering restarts the transition
+      void el.offsetWidth;
+      el.classList.add('kfo-toast--visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(hideToast, 4000);
     }
 
     // --- Load filter options ---
@@ -219,7 +259,7 @@
             <span class="kfo-color-name">${c.name}</span>
           </span>
           <span class="kfo-color-close" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 1.20857L10.7914 0L6 4.79143L1.20857 0L0 1.20857L4.79143 6L0 10.7914L1.20857 12L6 7.20857L10.7914 12L12 10.7914L7.20857 6L12 1.20857Z" fill="currentColor"/></svg>
           </span>
         </button>
       `).join('') + (hasToggle ? `
@@ -425,6 +465,7 @@
           const btn = e.currentTarget;
           btn.classList.toggle('active', active);
           btn.querySelector('.kfo-heart-icon').src = active ? heartActiveUrl : heartUrl;
+          if (active) showFavoriteToast(combo);
         });
 
         card.querySelector('.kfo-view-detail-btn').addEventListener('click', (e) => {
@@ -484,6 +525,7 @@
           const btn = e.currentTarget;
           btn.classList.toggle('active', active);
           btn.querySelector('.kfo-heart-icon').src = active ? heartActiveUrl : heartUrl;
+          if (active) showFavoriteToast(combo);
         });
 
         card.addEventListener('click', () => openModal(combo, colorMap));
@@ -685,6 +727,7 @@
         const cardHeart = root.querySelector(`.kfo-heart-btn[data-id="${combo.objectID}"] .kfo-heart-icon`);
         if (cardHeart) cardHeart.src = src;
         root.querySelector(`.kfo-heart-btn[data-id="${combo.objectID}"]`)?.classList.toggle('active', active);
+        if (active) showFavoriteToast(combo);
       });
 
       // Favorite (right panel button) — reuse same handler
