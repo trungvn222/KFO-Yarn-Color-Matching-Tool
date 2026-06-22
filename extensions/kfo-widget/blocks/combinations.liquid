@@ -20,7 +20,17 @@
   ></div>
 
   {{ 'kfo-widget.css' | asset_url | stylesheet_tag }}
-  <script src="{{ 'kfo-widget.js' | asset_url }}" defer></script>
+  <script>
+    console.log('[KFO] Block rendered, mount element:', document.getElementById('kfo-widget'));
+    console.log('[KFO] Script URL:', '{{ 'kfo-widget.js' | asset_url }}');
+    console.log('[KFO] CSS URL:', '{{ 'kfo-widget.css' | asset_url }}');
+  </script>
+  <script
+    src="{{ 'kfo-widget.js' | asset_url }}"
+    defer
+    onload="console.log('[KFO] kfo-widget.js loaded successfully');"
+    onerror="console.error('[KFO] Failed to load kfo-widget.js:', this.src);"
+  ></script>
 
   {% if block.settings.atc_success_script != blank %}
     <script>
