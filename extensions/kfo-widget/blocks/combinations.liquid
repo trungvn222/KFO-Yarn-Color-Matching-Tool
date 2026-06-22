@@ -21,16 +21,29 @@
 
   {{ 'kfo-widget.css' | asset_url | stylesheet_tag }}
   <script>
-    console.log('[KFO] Block rendered, mount element:', document.getElementById('kfo-widget'));
-    console.log('[KFO] Script URL:', '{{ 'kfo-widget.js' | asset_url }}');
-    console.log('[KFO] CSS URL:', '{{ 'kfo-widget.css' | asset_url }}');
+    (function () {
+      var src = '{{ 'kfo-widget.js' | asset_url }}';
+      console.log('[KFO] Block rendered, mount element:', document.getElementById('kfo-widget'));
+      console.log('[KFO] Script URL:', src);
+      console.log('[KFO] CSS URL:', '{{ 'kfo-widget.css' | asset_url }}');
+
+      // A static <script src defer> tag does NOT execute when this section is
+      // injected via innerHTML (Shopify Section Rendering API / instant-nav
+      // tools like shopify-perf-kit). A <script> created with createElement
+      // always executes, so we inject it programmatically instead.
+      if (document.querySelector('script[data-kfo-widget]')) {
+        console.log('[KFO] kfo-widget.js already injected, skipping');
+        return;
+      }
+      var s = document.createElement('script');
+      s.src = src;
+      s.defer = true;
+      s.setAttribute('data-kfo-widget', '');
+      s.onload = function () { console.log('[KFO] kfo-widget.js loaded successfully'); };
+      s.onerror = function () { console.error('[KFO] Failed to load kfo-widget.js:', src); };
+      document.head.appendChild(s);
+    })();
   </script>
-  <script
-    src="{{ 'kfo-widget.js' | asset_url }}"
-    defer
-    onload="console.log('[KFO] kfo-widget.js loaded successfully');"
-    onerror="console.error('[KFO] Failed to load kfo-widget.js:', this.src);"
-  ></script>
 
   {% if block.settings.atc_success_script != blank %}
     <script>
