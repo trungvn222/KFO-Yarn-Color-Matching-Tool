@@ -29,6 +29,45 @@
     window.dispatchEvent(new CustomEvent('kfo:favorites-changed'));
   }
 
+  // Inline heart glyph for the "ADD TO FAVORITE" text button — same heart shape
+  // as the kfo-heart assets but without the translucent circle badge, using
+  // currentColor so it tracks the button's text colour.
+  function favHeartSvg(active) {
+    return active
+      ? `<svg viewBox="0 0 63 63" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M45.009 33.6348C46.7774 31.8478 47.8757 29.4279 47.8757 26.7288C47.8757 24.1369 46.8461 21.6512 45.0133 19.8184C43.1806 17.9857 40.6949 16.9561 38.103 16.9561C34.8454 16.9561 31.9601 18.5383 30.1918 20.9955C29.2891 19.7418 28.1006 18.7214 26.7247 18.0189C25.3489 17.3164 23.8253 16.952 22.2805 16.9561C19.6886 16.9561 17.2029 17.9857 15.3702 19.8184C13.5374 21.6512 12.5078 24.1369 12.5078 26.7288C12.5078 29.4279 13.6061 31.8478 15.3745 33.6348L30.1918 48.4521L45.009 33.6348Z" fill="currentColor"/></svg>`
+      : `<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11.2181 19.7518C10.7507 19.2875 10.3804 18.7349 10.1288 18.1261C9.87712 17.5173 9.74916 16.8644 9.75234 16.2057C9.75234 14.8733 10.2816 13.5956 11.2237 12.6534C12.1658 11.7113 13.4436 11.1821 14.776 11.1821C16.6436 11.1821 18.2748 12.1986 19.1377 13.7116H20.4616C20.9002 12.9422 21.535 12.3027 22.3011 11.8584C23.0673 11.414 23.9376 11.1807 24.8232 11.1821C26.1556 11.1821 27.4334 11.7113 28.3755 12.6534C29.3176 13.5956 29.8469 14.8733 29.8469 16.2057C29.8469 17.5887 29.2559 18.8653 28.3812 19.7518L19.7996 28.3215L11.2181 19.7518ZM29.2086 20.591C30.3315 19.4563 31.0289 17.9196 31.0289 16.2057C31.0289 14.5598 30.3751 12.9814 29.2113 11.8176C28.0475 10.6538 26.4691 10 24.8232 10C22.7547 10 20.9225 11.0047 19.7996 12.565C19.2264 11.7689 18.4717 11.121 17.5981 10.6749C16.7244 10.2288 15.7569 9.99744 14.776 10C13.1301 10 11.5517 10.6538 10.3879 11.8176C9.22412 12.9814 8.57031 14.5598 8.57031 16.2057C8.57031 17.9196 9.26771 19.4563 10.3906 20.591L19.7996 30L29.2086 20.591Z" fill="currentColor"/></svg>`;
+  }
+
+  // Full-screen image viewer. Close (×) sits on the image; clicking the image
+  // toggles zoom in / out, clicking the backdrop or pressing Esc closes.
+  function openLightbox(src, alt) {
+    const lb = document.createElement('div');
+    lb.className = 'kfo-lightbox';
+    lb.innerHTML = `
+      <div class="kfo-lightbox-stage">
+        <img src="${src}" alt="${alt || ''}" class="kfo-lightbox-img" />
+        <button class="kfo-lightbox-close" type="button" aria-label="Close">&#x2715;</button>
+      </div>`;
+
+    function close() {
+      lb.remove();
+      document.removeEventListener('keydown', onKey);
+    }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+
+    lb.querySelector('.kfo-lightbox-img').addEventListener('click', (e) => {
+      e.stopPropagation();
+      lb.classList.toggle('zoomed');
+    });
+    lb.addEventListener('click', (e) => { if (e.target === lb) close(); });
+    lb.querySelector('.kfo-lightbox-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      close();
+    });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(lb);
+  }
+
   async function init() {
     const root = document.getElementById('kfo-favorites');
     if (!root) return;
@@ -195,7 +234,7 @@
               <img src="${favActive ? heartActiveUrl : heartUrl}" class="kfo-modal-img-heart" alt="" />
             </button>
             <button class="kfo-modal-img-btn" id="kfo-fav-modal-zoom" aria-label="Zoom">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+              <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="44" height="44" rx="22" fill="white" fill-opacity="0.5"/><path d="M33.5534 33.5505L27.9799 27.9769M27.9799 27.9769C28.9332 27.0236 29.6895 25.8918 30.2055 24.6461C30.7214 23.4005 30.987 22.0654 30.987 20.7171C30.987 19.3689 30.7214 18.0338 30.2055 16.7881C29.6895 15.5425 28.9332 14.4107 27.9799 13.4573C27.0265 12.5039 25.8947 11.7477 24.649 11.2317C23.4034 10.7158 22.0683 10.4502 20.7201 10.4502C19.3718 10.4502 18.0367 10.7158 16.7911 11.2317C15.5454 11.7477 14.4136 12.5039 13.4602 13.4573C11.5348 15.3827 10.4531 17.9942 10.4531 20.7171C10.4531 23.4401 11.5348 26.0515 13.4602 27.9769C15.3857 29.9024 17.9971 30.9841 20.7201 30.9841C23.443 30.9841 26.0544 29.9024 27.9799 27.9769ZM20.7201 16.8671V24.5671M16.8701 20.7171H24.5701" stroke="#3D3A35" stroke-width="1.28333" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
         </div>
@@ -203,7 +242,7 @@
           <button class="kfo-modal-close" id="kfo-fav-modal-close">&#x2715;</button>
           <h2 class="kfo-modal-title">${(combo.popup_name || combo.name).toUpperCase()}</h2>
           <button class="kfo-modal-fav-btn ${favActive ? 'active' : ''}" id="kfo-fav-modal-fav">
-            <img src="${favActive ? heartActiveUrl : heartUrl}" class="kfo-modal-fav-icon" alt="" />
+            <span class="kfo-modal-fav-icon">${favHeartSvg(favActive)}</span>
             ${favActive ? 'ADDED TO FAVORITE' : 'ADD TO FAVORITE'}
           </button>
           ${combo.description ? `<p class="kfo-modal-desc">${combo.description}</p>` : ''}
@@ -277,10 +316,9 @@
         const active = isFav(combo.objectID);
         const src = active ? heartActiveUrl : heartUrl;
         body.querySelector('.kfo-modal-img-heart').src = src;
-        body.querySelector('.kfo-modal-fav-icon').src = src;
+        body.querySelector('.kfo-modal-fav-icon').innerHTML = favHeartSvg(active);
         const favBtn = body.querySelector('#kfo-fav-modal-fav');
         favBtn.classList.toggle('active', active);
-        favBtn.querySelector('img').src = src;
         favBtn.childNodes[favBtn.childNodes.length - 1].textContent = active ? 'ADDED TO FAVORITE' : 'ADD TO FAVORITE';
         // If unfavorited, remove card from grid
         if (!active) {
@@ -302,15 +340,7 @@
       // Zoom — lightbox
       if (combo.image_url) {
         body.querySelector('#kfo-fav-modal-zoom').addEventListener('click', () => {
-          const lb = document.createElement('div');
-          lb.className = 'kfo-lightbox';
-          lb.innerHTML = `
-            <button class="kfo-lightbox-close">&#x2715;</button>
-            <img src="${combo.image_url}" alt="${combo.name}" class="kfo-lightbox-img" />
-          `;
-          lb.addEventListener('click', e => { if (e.target === lb) lb.remove(); });
-          lb.querySelector('.kfo-lightbox-close').addEventListener('click', () => lb.remove());
-          document.body.appendChild(lb);
+          openLightbox(combo.image_url, combo.name);
         });
       }
 

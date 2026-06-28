@@ -457,6 +457,54 @@
   min-width: 80px;
   text-align: center;
 }
+.kfo-page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.kfo-page-num {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.kfo-page-num:hover {
+  background: #f3f4f6;
+}
+.kfo-page-num.active {
+  background: #111;
+  border-color: #111;
+  color: #fff;
+  cursor: default;
+}
+.kfo-page-ellipsis {
+  min-width: 20px;
+  text-align: center;
+  color: #9ca3af;
+  user-select: none;
+}
+@media (max-width: 480px) {
+  .kfo-pagination {
+    gap: 8px;
+  }
+  .kfo-page-btn {
+    padding: 8px 12px;
+  }
+  .kfo-page-num {
+    min-width: 32px;
+    height: 32px;
+  }
+}
 
 /* Modal overlay */
 .kfo-modal-overlay {
@@ -474,7 +522,7 @@
 }
 
 .kfo-modal {
-  background: #fff;
+  background: #f3f3f2;
   width: 100%;
   max-width: 820px;
   max-height: 90vh;
@@ -490,7 +538,7 @@
 .kfo-modal-left {
   position: relative;
   flex: 0 0 45%;
-  background: #f3f4f6;
+  background: #f3f3f2;
 }
 .kfo-modal-main-img {
   width: 100%;
@@ -509,7 +557,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 30px;
   opacity: 0;
   transition: opacity 0.2s;
   background: rgba(0, 0, 0, 0.08);
@@ -517,24 +565,32 @@
 .kfo-modal-left:hover .kfo-modal-img-actions {
   opacity: 1;
 }
+/* The heart / zoom icons are self-contained assets that include their own
+   circular background, so the button is just a transparent, full-size wrapper
+   (a white circle here would double up with the icon's own circle). */
 .kfo-modal-img-btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: transform 0.15s;
 }
 .kfo-modal-img-btn:hover {
-  background: #fff;
+  transform: scale(1.06);
 }
 .kfo-modal-img-heart {
-  width: 28px;
-  height: 28px;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.kfo-modal-img-btn svg {
+  width: 100%;
+  height: 100%;
   display: block;
 }
 
@@ -577,19 +633,25 @@
   cursor: pointer;
   font-size: 14px;
   letter-spacing: 0.05em;
-  color: #374151;
+  color: #3d3a35;
   padding: 0;
   margin-bottom: 16px;
 }
 .kfo-modal-fav-btn.active {
-  color: #111;
+  color: #3d3a35;
 }
 .kfo-modal-fav-btn:hover {
   color: #111;
 }
 .kfo-modal-fav-icon {
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  flex: none;
+}
+.kfo-modal-fav-icon svg {
+  width: 100%;
+  height: 100%;
   display: block;
 }
 .kfo-modal-desc {
@@ -666,6 +728,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
+}
+/* Zoomed-in state: image grows past the viewport and the backdrop scrolls */
+.kfo-lightbox.zoomed {
+  align-items: flex-start;
+  overflow: auto;
+}
+/* Wrapper sized to the rendered image so the close button + zoom cursor sit on the photo itself */
+.kfo-lightbox-stage {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  cursor: zoom-in;
+}
+.kfo-lightbox.zoomed .kfo-lightbox-stage {
   cursor: zoom-out;
 }
 .kfo-lightbox-img {
@@ -674,14 +751,21 @@
   object-fit: contain;
   display: block;
 }
+.kfo-lightbox.zoomed .kfo-lightbox-img {
+  max-width: none;
+  max-height: none;
+  width: 150vw;
+  height: auto;
+}
 .kfo-lightbox-close {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  background: rgba(255, 255, 255, 0.15);
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.55);
   border: none;
   color: #fff;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -692,7 +776,13 @@
   transition: background 0.15s;
 }
 .kfo-lightbox-close:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.8);
+}
+/* When zoomed the image overflows & scrolls, so keep the close pinned on-screen */
+.kfo-lightbox.zoomed .kfo-lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
 }
 
 /* Sections mode */
@@ -789,13 +879,12 @@
   inset: 0;
   background: rgba(255, 255, 255, 0.75);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  color: #111827;
+  color: #3d3a35;
   letter-spacing: 0.03em;
   transition: background 0.15s;
 }
@@ -821,6 +910,30 @@
   border-top-color: #6a6a6a;
   border-radius: 50%;
   animation: kfo-spin 0.7s linear infinite;
+}
+/* "Show less" card — collapses an expanded section back to the first row */
+.kfo-show-less-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.kfo-show-less-card:hover {
+  background: #f9fafb;
+}
+.kfo-show-less-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #3d3a35;
+  letter-spacing: 0.03em;
 }
 .kfo-load-more-btn {
   margin-top: 16px;
@@ -980,7 +1093,7 @@
   /* ── Popup: centered card per Figma mobile (node 3113:6985) ── */
   .kfo-modal {
     flex-direction: column;
-    background: #f3f3f3;
+    background: #f3f3f2;
     padding: 48px 16px 20px;
     max-height: 90vh;
     overflow-y: auto;
@@ -997,7 +1110,7 @@
     max-width: 100%;
     aspect-ratio: 1;
     height: auto;
-    background: #fff;
+    background: #f3f3f2;
   }
   /* Heart + zoom always visible on touch (no hover on mobile) */
   .kfo-modal-img-actions {
@@ -1231,8 +1344,15 @@
     font-size: 18px;
     margin-bottom: 40px;
   }
-  /* 9- Product image 196x196 -> 160x160 (fixed 160px columns) */
+  /* Right content box vertically centered against the image (slide 3 - 4) */
+  .kfo-modal-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
+  }
+  /* Bigger product cards + 20px more spacing between the two (slide 3 - 3) */
   .kfo-modal-products-grid {
-    grid-template-columns: repeat(2, 160px);
+    grid-template-columns: repeat(2, 200px);
+    gap: 32px;
   }
 }

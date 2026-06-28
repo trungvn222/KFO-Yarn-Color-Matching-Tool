@@ -7,6 +7,7 @@
     data-colors-index="{{ block.settings.colors_index | default: 'kfo_colors' | escape }}"
     data-tags-index="{{ block.settings.tags_index | default: 'kfo_tags' | escape }}"
     data-per-page="{{ block.settings.per_page | default: 12 }}"
+    data-colors-per-page="{{ block.settings.colors_per_page | default: 5 }}"
     data-show-search="{{ block.settings.show_search }}"
     data-show-colors="{{ block.settings.show_color_filter }}"
     data-color-filter-label="{{ block.settings.color_filter_label | default: 'FILTER BY COLORS:' | escape }}"
@@ -114,6 +115,16 @@
       "max": 48,
       "step": 4,
       "default": 12
+    },
+    {
+      "type": "range",
+      "id": "colors_per_page",
+      "label": "Colors per page",
+      "info": "How many color sections show per page before pagination.",
+      "min": 1,
+      "max": 20,
+      "step": 1,
+      "default": 5
     },
     {
       "type": "header",
