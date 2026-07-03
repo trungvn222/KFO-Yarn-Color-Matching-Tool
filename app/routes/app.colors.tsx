@@ -33,7 +33,18 @@ import { ImagePicker } from "../components/ImagePicker";
 import { INDEXES } from "../algolia.server";
 import { getMerchantAlgoliaClient } from "../merchantAlgolia.server";
 import { requireMerchantConfig } from "../config.server";
+import { rehostImageFromUrl } from "../shopifyFiles.server";
 import type { KfoColor } from "../types/kfo";
+
+type ImportColorRow = {
+  objectID?: string;
+  name: string;
+  hex: string;
+  content_title?: string;
+  description?: string;
+  image_url?: string;
+  content_image_url?: string;
+};
 
 const PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -79,7 +90,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
 
@@ -112,14 +123,26 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (intent === "import") {
     const raw = formData.get("rows") as string;
-    const rows = JSON.parse(raw) as { name: string; hex: string; description: string }[];
-    const objects = rows.map((row) => ({
-      objectID: row.name.toLowerCase().replace(/\s+/g, "-"),
-      name: row.name,
-      hex: row.hex || "#cccccc",
-      description: row.description || "",
-      image_url: "",
-    }));
+    const rows = JSON.parse(raw) as ImportColorRow[];
+    // Re-host images onto this store's CDN so they no longer depend on the
+    // source store. Same source URL is only uploaded once per import.
+    const imageCache = new Map<string, string>();
+    const objects: KfoColor[] = [];
+    for (const row of rows) {
+      const image_url = row.image_url ? await rehostImageFromUrl(admin, row.image_url, imageCache) : "";
+      const content_image_url = row.content_image_url
+        ? await rehostImageFromUrl(admin, row.content_image_url, imageCache)
+        : "";
+      objects.push({
+        objectID: row.objectID?.trim() || row.name.toLowerCase().replace(/\s+/g, "-"),
+        name: row.name,
+        hex: row.hex || "#cccccc",
+        content_title: row.content_title || "",
+        description: row.description || "",
+        image_url,
+        content_image_url,
+      });
+    }
     await Promise.all(
       objects.map((obj) => client.saveObject({ indexName: INDEXES.colors, body: obj }))
     );
@@ -215,7 +238,7 @@ export default function ColorsPage() {
 
   // Import CSV state
   const [showImport, setShowImport] = useState(false);
-  const [importRows, setImportRows] = useState<{ name: string; hex: string; description: string }[]>([]);
+  const [importRows, setImportRows] = useState<ImportColorRow[]>([]);
   const [importError, setImportError] = useState("");
   const csvInputRef = useRef<HTMLInputElement>(null);
   const importFetcher = useFetcher<{ ok: boolean; imported: number }>();
@@ -283,11 +306,15 @@ export default function ColorsPage() {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const rows = (results.data as any[])
+        const rows: ImportColorRow[] = (results.data as any[])
           .map((row) => ({
+            objectID: String(row.objectID || row.objectid || row.id || "").trim(),
             name: String(row.name || row.Name || "").trim(),
             hex: String(row.hex || row.Hex || row.color || row.Color || "").trim(),
+            content_title: String(row.content_title || row.contentTitle || "").trim(),
             description: String(row.description || row.Description || "").trim(),
+            image_url: String(row.image_url || row.imageUrl || row.image || "").trim(),
+            content_image_url: String(row.content_image_url || row.contentImageUrl || "").trim(),
           }))
           .filter((r) => r.name);
         if (!rows.length) {
@@ -303,7 +330,15 @@ export default function ColorsPage() {
   }
 
   function downloadTemplate() {
-    const csv = Papa.unparse([{ name: "Example Red", hex: "#FF0000", description: "A vibrant red" }]);
+    const csv = Papa.unparse([{
+      objectID: "example-red",
+      name: "Example Red",
+      hex: "#FF0000",
+      content_title: "Example Red",
+      description: "A vibrant red",
+      image_url: "",
+      content_image_url: "",
+    }]);
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -671,7 +706,9 @@ export default function ColorsPage() {
             </InlineStack>
 
             <Text as="p" variant="bodySm" tone="subdued">
-              CSV must have a <strong>name</strong> column. Optional: <strong>hex</strong>, <strong>description</strong>.
+              CSV must have a <strong>name</strong> column. Optional: <strong>objectID</strong>, <strong>hex</strong>,{" "}
+              <strong>content_title</strong>, <strong>description</strong>, <strong>image_url</strong>,{" "}
+              <strong>content_image_url</strong>. Any image URLs are re-uploaded to this store's CDN.
               Existing colors with the same ID will be overwritten.
             </Text>
 
@@ -682,10 +719,11 @@ export default function ColorsPage() {
             {importRows.length > 0 && (
               <DataTable
                 columnContentTypes={["text", "text", "text", "text"]}
-                headings={["Name", "Hex", "Description", "Status"]}
+                headings={["Name", "Hex", "Images", "Status"]}
                 rows={importRows.map((r) => {
-                  const id = r.name.toLowerCase().replace(/\s+/g, "-");
+                  const id = r.objectID?.trim() || r.name.toLowerCase().replace(/\s+/g, "-");
                   const isOverwrite = allIds.includes(id);
+                  const imageCount = [r.image_url, r.content_image_url].filter(Boolean).length;
                   return [
                     r.name,
                     <InlineStack gap="200" blockAlign="center">
@@ -694,7 +732,9 @@ export default function ColorsPage() {
                       )}
                       <Text as="span" variant="bodySm">{r.hex || "—"}</Text>
                     </InlineStack>,
-                    r.description || "—",
+                    imageCount > 0
+                      ? <Badge tone="info">{`${imageCount} to re-host`}</Badge>
+                      : <Text as="span" variant="bodySm">—</Text>,
                     isOverwrite
                       ? <Badge tone="warning">Will overwrite</Badge>
                       : <Badge tone="success">New</Badge>,

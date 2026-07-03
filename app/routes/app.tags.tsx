@@ -2,6 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, useSubmit, useNavigation, useFetcher, useRevalidator } from "@remix-run/react";
 import { useState, useRef, useEffect } from "react";
+import Papa from "papaparse";
 import {
   Page,
   Layout,
@@ -23,13 +24,25 @@ import {
   Box,
   Divider,
 } from "@shopify/polaris";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { RichTextEditor } from "../components/RichTextEditor";
 import { ImagePicker } from "../components/ImagePicker";
 import { INDEXES } from "../algolia.server";
 import { getMerchantAlgoliaClient } from "../merchantAlgolia.server";
 import { requireMerchantConfig } from "../config.server";
+import { rehostImageFromUrl } from "../shopifyFiles.server";
 import type { KfoTag } from "../types/kfo";
+
+type ImportTagRow = {
+  objectID?: string;
+  name: string;
+  slug?: string;
+  color?: string;
+  description?: string;
+  image_url?: string;
+  content_image_url?: string;
+};
 
 const PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -75,7 +88,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
 
@@ -94,6 +107,35 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
     await client.waitForTask({ indexName: INDEXES.tags, taskID });
     return json({ ok: true });
+  }
+
+  if (intent === "import") {
+    const raw = formData.get("rows") as string;
+    const rows = JSON.parse(raw) as ImportTagRow[];
+    // Re-host images onto this store's CDN so they no longer depend on the
+    // source store. Same source URL is only uploaded once per import.
+    const imageCache = new Map<string, string>();
+    const objects: KfoTag[] = [];
+    for (const row of rows) {
+      const slug = row.objectID?.trim() || row.slug?.trim() || row.name.toLowerCase().replace(/\s+/g, "-");
+      const image_url = row.image_url ? await rehostImageFromUrl(admin, row.image_url, imageCache) : "";
+      const content_image_url = row.content_image_url
+        ? await rehostImageFromUrl(admin, row.content_image_url, imageCache)
+        : "";
+      objects.push({
+        objectID: slug,
+        name: row.name,
+        slug,
+        color: row.color || "#FFF9C4",
+        description: row.description || "",
+        image_url,
+        content_image_url,
+      });
+    }
+    await Promise.all(
+      objects.map((obj) => client.saveObject({ indexName: INDEXES.tags, body: obj }))
+    );
+    return json({ ok: true, imported: objects.length });
   }
 
   if (intent === "check-tag-usage") {
@@ -135,6 +177,7 @@ export default function TagsPage() {
   const submit = useSubmit();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
+  const shopify = useAppBridge();
   const loading = navigation.state !== "idle";
 
   // Search
@@ -179,6 +222,78 @@ export default function TagsPage() {
     } finally {
       setExporting(false);
     }
+  }
+
+  // Import CSV state
+  const [showImport, setShowImport] = useState(false);
+  const [importRows, setImportRows] = useState<ImportTagRow[]>([]);
+  const [importError, setImportError] = useState("");
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const importFetcher = useFetcher<{ ok: boolean; imported: number }>();
+
+  useEffect(() => {
+    if (importFetcher.state === "idle" && importFetcher.data?.ok) {
+      shopify.toast.show(`Imported ${importFetcher.data.imported} tag${importFetcher.data.imported !== 1 ? "s" : ""}`);
+      setShowImport(false);
+      setImportRows([]);
+      revalidator.revalidate();
+    }
+  }, [importFetcher.state, importFetcher.data]);
+
+  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const rows: ImportTagRow[] = (results.data as any[])
+          .map((row) => ({
+            objectID: String(row.objectID || row.objectid || row.id || "").trim(),
+            name: String(row.name || row.Name || "").trim(),
+            slug: String(row.slug || row.Slug || "").trim(),
+            color: String(row.color || row.Color || "").trim(),
+            description: String(row.description || row.Description || "").trim(),
+            image_url: String(row.image_url || row.imageUrl || row.image || "").trim(),
+            content_image_url: String(row.content_image_url || row.contentImageUrl || "").trim(),
+          }))
+          .filter((r) => r.name);
+        if (!rows.length) {
+          setImportError("No valid rows found. Make sure your CSV has a 'name' column.");
+          return;
+        }
+        setImportError("");
+        setImportRows(rows);
+      },
+      error: (err: Error) => setImportError(err.message),
+    });
+    if (csvInputRef.current) csvInputRef.current.value = "";
+  }
+
+  function downloadTemplate() {
+    const csv = Papa.unparse([{
+      objectID: "example-tag",
+      name: "Example Tag",
+      slug: "example-tag",
+      color: "#FFF9C4",
+      description: "A sample tag",
+      image_url: "",
+      content_image_url: "",
+    }]);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tags-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImport() {
+    importFetcher.submit(
+      { intent: "import", rows: JSON.stringify(importRows) },
+      { method: "post" }
+    );
   }
 
   // Modal state
@@ -323,6 +438,7 @@ export default function TagsPage() {
       title="Tags"
       primaryAction={{ content: "Add tag", onAction: openCreate }}
       secondaryActions={[
+        { content: "Import CSV", onAction: () => { setShowImport(true); setImportRows([]); setImportError(""); } },
         { content: exporting ? "Exporting..." : "Export CSV", onAction: handleExport, loading: exporting, disabled: exporting },
         { content: "Refresh", onAction: () => revalidator.revalidate(), loading: revalidator.state !== "idle" },
       ]}
@@ -515,6 +631,78 @@ export default function TagsPage() {
               <ProgressBar progress={progress} size="small" tone={deletePhase === "done" ? "success" : "highlight"} />
             </BlockStack>
           )}
+        </Modal.Section>
+      </Modal>
+
+      <input
+        ref={csvInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        style={{ display: "none" }}
+        onChange={handleCsvFile}
+      />
+
+      <Modal
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        title="Import tags from CSV"
+        size="large"
+        primaryAction={
+          importRows.length > 0
+            ? {
+                content: `Import ${importRows.length} tag${importRows.length !== 1 ? "s" : ""}`,
+                onAction: handleImport,
+                loading: importFetcher.state !== "idle",
+              }
+            : undefined
+        }
+        secondaryActions={[{ content: "Cancel", onAction: () => setShowImport(false) }]}
+      >
+        <Modal.Section>
+          <BlockStack gap="400">
+            <InlineStack gap="300" blockAlign="center">
+              <Button onClick={() => csvInputRef.current?.click()}>Choose CSV file</Button>
+              <Button variant="plain" onClick={downloadTemplate}>Download template</Button>
+            </InlineStack>
+
+            <Text as="p" variant="bodySm" tone="subdued">
+              CSV must have a <strong>name</strong> column. Optional: <strong>objectID</strong>, <strong>slug</strong>,{" "}
+              <strong>color</strong>, <strong>description</strong>, <strong>image_url</strong>,{" "}
+              <strong>content_image_url</strong>. Any image URLs are re-uploaded to this store's CDN.
+              Existing tags with the same ID will be overwritten.
+            </Text>
+
+            {importError && (
+              <Banner tone="critical" onDismiss={() => setImportError("")}>{importError}</Banner>
+            )}
+
+            {importRows.length > 0 && (
+              <DataTable
+                columnContentTypes={["text", "text", "text", "text"]}
+                headings={["Name", "Color", "Images", "Status"]}
+                rows={importRows.map((r) => {
+                  const id = r.objectID?.trim() || r.slug?.trim() || r.name.toLowerCase().replace(/\s+/g, "-");
+                  const isOverwrite = allIds.includes(id);
+                  const imageCount = [r.image_url, r.content_image_url].filter(Boolean).length;
+                  return [
+                    r.name,
+                    <InlineStack gap="200" blockAlign="center">
+                      {r.color && (
+                        <div style={{ backgroundColor: r.color, width: 16, height: 16, borderRadius: 2, border: "1px solid #ccc", flexShrink: 0 }} />
+                      )}
+                      <Text as="span" variant="bodySm">{r.color || "—"}</Text>
+                    </InlineStack>,
+                    imageCount > 0
+                      ? <Badge tone="info">{`${imageCount} to re-host`}</Badge>
+                      : <Text as="span" variant="bodySm">—</Text>,
+                    isOverwrite
+                      ? <Badge tone="warning">Will overwrite</Badge>
+                      : <Badge tone="success">New</Badge>,
+                  ];
+                })}
+              />
+            )}
+          </BlockStack>
         </Modal.Section>
       </Modal>
     </Page>
