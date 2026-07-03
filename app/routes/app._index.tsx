@@ -1,6 +1,8 @@
+import { randomUUID } from "crypto";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, useSubmit, useNavigation, useRevalidator, useFetcher } from "@remix-run/react";
+import Papa from "papaparse";
 import {
   Page,
   Layout,
@@ -8,9 +10,12 @@ import {
   IndexTable,
   Button,
   Badge,
+  Banner,
   ChoiceList,
+  DataTable,
   Popover,
   Pagination,
+  ProgressBar,
   Select,
   Thumbnail,
   InlineStack,
@@ -29,6 +34,7 @@ import { authenticate } from "../shopify.server";
 import { INDEXES } from "../algolia.server";
 import { getMerchantAlgoliaClient } from "../merchantAlgolia.server";
 import { requireMerchantConfig } from "../config.server";
+import { rehostImageFromUrl } from "../shopifyFiles.server";
 import type { KfoCombination, KfoColor, KfoTag } from "../types/kfo";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -88,7 +94,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
 
@@ -99,10 +105,113 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return json({ ok: true });
   }
 
+  if (intent === "import") {
+    let rows: any[];
+    try {
+      rows = JSON.parse(formData.get("rows") as string);
+    } catch {
+      return json({ ok: false, error: "Invalid data" }, { status: 400 });
+    }
+    if (!rows.length) return json({ ok: true, imported: 0 });
+
+    const client = await getMerchantAlgoliaClient(session.shop);
+
+    // Re-host each combination thumbnail onto this store's CDN so it no longer
+    // depends on the source store. Same source URL is only uploaded once.
+    const imageCache = new Map<string, string>();
+    const objects = [];
+    for (const row of rows) {
+      const image_url = row.image_url ? await rehostImageFromUrl(admin, row.image_url, imageCache) : "";
+      objects.push({
+        objectID: randomUUID(),
+        name: row.name,
+        popup_name: row.popup_name ?? "",
+        description: row.description ?? "",
+        position: Number(row.position) || 0,
+        image_url,
+        colors: row.colors,
+        tags: row.tags,
+        products: row.variant_ids.map((id: string, i: number) => ({
+          variant_id: id,
+          product_name: "",
+          position: i + 1,
+        })),
+      });
+    }
+
+    await client.saveObjects({ indexName: INDEXES.combinations, objects });
+    return json({ ok: true, imported: objects.length });
+  }
+
   return json({ ok: false });
 };
 
 const PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
+
+// ── CSV import validation ───────────────────────────────────────────────────
+interface CsvRow {
+  name: string;
+  popup_name?: string;
+  description?: string;
+  position?: string;
+  image_url?: string;
+  colors?: string;
+  tags?: string;
+  variant_ids?: string;
+}
+
+interface ImportPreviewRow {
+  name: string;
+  popup_name: string;
+  description: string;
+  position: number;
+  image_url: string;
+  colors: string[];
+  tags: string[];
+  variant_ids: string[];
+  errors: string[];
+}
+
+function validateImportRow(raw: CsvRow, allColors: KfoColor[], allTags: KfoTag[]): ImportPreviewRow {
+  const errors: string[] = [];
+
+  const name = (raw.name ?? "").trim();
+  if (!name) errors.push("name required");
+
+  const colorSlugs = raw.colors ? raw.colors.split("|").map((s) => s.trim()).filter(Boolean) : [];
+  const tagSlugs = raw.tags ? raw.tags.split("|").map((s) => s.trim()).filter(Boolean) : [];
+  const variantIds = raw.variant_ids ? raw.variant_ids.split("|").map((s) => s.trim()).filter(Boolean) : [];
+
+  const colorObjectIds: string[] = [];
+  for (const slug of colorSlugs) {
+    const found = allColors.find((c) => c.objectID === slug || c.name.toLowerCase() === slug.toLowerCase());
+    if (!found) errors.push(`unknown color: ${slug}`);
+    else colorObjectIds.push(found.objectID);
+  }
+
+  const tagSlugsResolved: string[] = [];
+  for (const slug of tagSlugs) {
+    const found = allTags.find((t) => t.slug === slug || t.name.toLowerCase() === slug.toLowerCase());
+    if (!found) errors.push(`unknown tag: ${slug}`);
+    else tagSlugsResolved.push(found.slug);
+  }
+
+  for (const id of variantIds) {
+    if (!/^\d+$/.test(id)) errors.push(`non-numeric variant_id: ${id}`);
+  }
+
+  return {
+    name,
+    popup_name: (raw.popup_name ?? "").trim(),
+    description: (raw.description ?? "").trim(),
+    position: Number(raw.position) || 0,
+    image_url: (raw.image_url ?? "").trim(),
+    colors: colorObjectIds,
+    tags: tagSlugsResolved,
+    variant_ids: variantIds,
+    errors,
+  };
+}
 
 export default function CombinationsIndex() {
   const { combinations, tags, colors, selectedTagSlugs, selectedColorIds, q, page, perPage, nbPages, nbHits } = useLoaderData<typeof loader>();
@@ -118,6 +227,90 @@ export default function CombinationsIndex() {
   const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  // Import CSV
+  const [showImport, setShowImport] = useState(false);
+  const [importRows, setImportRows] = useState<ImportPreviewRow[]>([]);
+  const [importParseError, setImportParseError] = useState("");
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number; current: string } | null>(null);
+  const importing = importProgress !== null;
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const importValidRows = importRows.filter((r) => r.errors.length === 0);
+  const importInvalidRows = importRows.filter((r) => r.errors.length > 0);
+
+  function openImport() {
+    setImportRows([]);
+    setImportParseError("");
+    setShowImport(true);
+  }
+
+  function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportParseError("");
+    Papa.parse<CsvRow>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        if (results.errors.length) {
+          setImportParseError(results.errors[0].message);
+          return;
+        }
+        setImportRows(results.data.map((row) => validateImportRow(row, colors, tags)));
+      },
+      error: (err: Error) => setImportParseError(err.message),
+    });
+    if (importInputRef.current) importInputRef.current.value = "";
+  }
+
+  function downloadImportTemplate() {
+    const header = "name,description,position,image_url,colors,tags,variant_ids\n";
+    const example = '"Summer Combo","Warm tones",1,"","red|navy","summer|pastel","123456|789012"\n';
+    const blob = new Blob([header + example], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "kfo-import-template.csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleImport() {
+    if (!importValidRows.length) return;
+    const data = importValidRows.map((r) => ({
+      name: r.name,
+      popup_name: r.popup_name,
+      description: r.description,
+      position: r.position,
+      image_url: r.image_url,
+      colors: r.colors,
+      tags: r.tags,
+      variant_ids: r.variant_ids,
+    }));
+    const CHUNK = 3;
+    setImportProgress({ done: 0, total: data.length, current: data[0]?.name ?? "" });
+    let imported = 0;
+    let failed = 0;
+    // 3 rows per request: shows progress while thumbnails re-host, and lets rows
+    // in the same batch share the image de-dup cache. App Bridge injects the token.
+    for (let i = 0; i < data.length; i += CHUNK) {
+      const batch = data.slice(i, i + CHUNK);
+      setImportProgress({ done: imported + failed, total: data.length, current: batch[0].name });
+      const fd = new FormData();
+      fd.set("intent", "import");
+      fd.set("rows", JSON.stringify(batch));
+      try {
+        const res = await fetch("/app", { method: "POST", body: fd });
+        if (!res.ok) throw new Error(String(res.status));
+        imported += batch.length;
+      } catch {
+        failed += batch.length;
+      }
+      setImportProgress({ done: imported + failed, total: data.length, current: batch[batch.length - 1].name });
+    }
+    setImportProgress(null);
+    setShowImport(false);
+    setImportRows([]);
+    revalidator.revalidate();
+  }
 
   const [showNewModal, setShowNewModal] = useState(false);
   const [modalKey, setModalKey] = useState(0);
@@ -272,6 +465,10 @@ export default function CombinationsIndex() {
           onAction: handleExport,
           loading: exporting,
           disabled: exporting,
+        },
+        {
+          content: "Import CSV",
+          onAction: openImport,
         },
         {
           content: "Refresh",
@@ -522,6 +719,95 @@ export default function CombinationsIndex() {
               </Box>
             );
           })()}
+        </Modal.Section>
+      </Modal>
+
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        style={{ display: "none" }}
+        onChange={handleImportFile}
+      />
+
+      <Modal
+        open={showImport}
+        onClose={() => { if (!importing) setShowImport(false); }}
+        title="Import combinations from CSV"
+        size="large"
+        primaryAction={
+          importValidRows.length > 0
+            ? {
+                content: `Import ${importValidRows.length} combination${importValidRows.length !== 1 ? "s" : ""}`,
+                onAction: handleImport,
+                loading: importing,
+              }
+            : undefined
+        }
+        secondaryActions={[{ content: "Cancel", onAction: () => setShowImport(false), disabled: importing }]}
+      >
+        <Modal.Section>
+          <BlockStack gap="400">
+            {importProgress && (
+              <BlockStack gap="200">
+                <Text as="p" variant="bodyMd">
+                  Importing {importProgress.done} / {importProgress.total}
+                  {importProgress.current ? ` — ${importProgress.current}` : ""}
+                </Text>
+                <ProgressBar
+                  progress={importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}
+                  size="small"
+                  tone="highlight"
+                />
+                <Text as="p" variant="bodySm" tone="subdued">
+                  Re-hosting thumbnails can take a few seconds each — please keep this open.
+                </Text>
+              </BlockStack>
+            )}
+
+            <InlineStack gap="300" blockAlign="center">
+              <Button onClick={() => importInputRef.current?.click()} disabled={importing}>Choose CSV file</Button>
+              <Button variant="plain" onClick={downloadImportTemplate} disabled={importing}>Download template</Button>
+            </InlineStack>
+
+            <Text as="p" variant="bodySm" tone="subdued">
+              Columns: <strong>name</strong> (required), <strong>description</strong>, <strong>position</strong>,{" "}
+              <strong>image_url</strong>, <strong>colors</strong>, <strong>tags</strong>, <strong>variant_ids</strong>.
+              Separate multiple values with <code>|</code>. Colors/tags must match existing ones — import Colors &amp; Tags first.
+              Any image URLs are re-uploaded to this store's CDN.
+            </Text>
+
+            {importParseError && (
+              <Banner tone="critical" onDismiss={() => setImportParseError("")}>{importParseError}</Banner>
+            )}
+
+            {importRows.length > 0 && (
+              <BlockStack gap="200">
+                <InlineStack gap="200">
+                  {importValidRows.length > 0 && <Badge tone="success">{`${importValidRows.length} valid`}</Badge>}
+                  {importInvalidRows.length > 0 && <Badge tone="critical">{`${importInvalidRows.length} invalid`}</Badge>}
+                </InlineStack>
+                <DataTable
+                  columnContentTypes={["text", "text", "text", "text", "text"]}
+                  headings={["Name", "Variant IDs", "Tags", "Image", "Status"]}
+                  rows={importRows.map((r) => [
+                    r.name || "(empty)",
+                    r.variant_ids.join(", ") || "—",
+                    <InlineStack gap="100" wrap>
+                      {r.tags.map((slug) => {
+                        const t = tags.find((x: KfoTag) => x.slug === slug);
+                        return <Badge key={slug}>{t?.name ?? slug}</Badge>;
+                      })}
+                    </InlineStack>,
+                    r.image_url ? <Badge tone="info">to re-host</Badge> : <Text as="span" variant="bodySm">—</Text>,
+                    r.errors.length === 0
+                      ? <Badge tone="success">Valid</Badge>
+                      : <BlockStack gap="100">{r.errors.map((e, ei) => <Badge key={ei} tone="critical">{e}</Badge>)}</BlockStack>,
+                  ])}
+                />
+              </BlockStack>
+            )}
+          </BlockStack>
         </Modal.Section>
       </Modal>
     </Page>
