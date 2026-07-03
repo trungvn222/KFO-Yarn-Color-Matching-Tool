@@ -192,6 +192,27 @@ export default function ColorsPage() {
   const [contentTitle, setContentTitle] = useState("");
   const [description, setDescription] = useState("");
 
+  // Export CSV state
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (queryValue) params.set("q", queryValue);
+      const res = await fetch(`/app/colors/export?${params}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `kfo-colors-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   // Import CSV state
   const [showImport, setShowImport] = useState(false);
   const [importRows, setImportRows] = useState<{ name: string; hex: string; description: string }[]>([]);
@@ -401,6 +422,7 @@ export default function ColorsPage() {
       primaryAction={{ content: "Add color", onAction: openCreate }}
       secondaryActions={[
         { content: "Import CSV", onAction: () => { setShowImport(true); setImportRows([]); setImportError(""); } },
+        { content: exporting ? "Exporting..." : "Export CSV", onAction: handleExport, loading: exporting, disabled: exporting },
         { content: "Refresh", onAction: () => revalidator.revalidate(), loading: revalidator.state !== "idle" },
       ]}
     >

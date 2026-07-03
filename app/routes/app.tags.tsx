@@ -160,6 +160,27 @@ export default function TagsPage() {
     applyFilters("");
   }
 
+  // Export CSV state
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (queryValue) params.set("q", queryValue);
+      const res = await fetch(`/app/tags/export?${params}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `kfo-tags-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<KfoTag | null>(null);
@@ -302,6 +323,7 @@ export default function TagsPage() {
       title="Tags"
       primaryAction={{ content: "Add tag", onAction: openCreate }}
       secondaryActions={[
+        { content: exporting ? "Exporting..." : "Export CSV", onAction: handleExport, loading: exporting, disabled: exporting },
         { content: "Refresh", onAction: () => revalidator.revalidate(), loading: revalidator.state !== "idle" },
       ]}
     >
