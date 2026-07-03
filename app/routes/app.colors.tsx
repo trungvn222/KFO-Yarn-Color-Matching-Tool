@@ -241,7 +241,8 @@ export default function ColorsPage() {
   const [importRows, setImportRows] = useState<ImportColorRow[]>([]);
   const [importError, setImportError] = useState("");
   const csvInputRef = useRef<HTMLInputElement>(null);
-  const importFetcher = useFetcher<{ ok: boolean; imported: number }>();
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number; current: string } | null>(null);
+  const importing = importProgress !== null;
 
   // Save (create/edit) fetcher — avoids full-page navigation
   const saveFetcher = useFetcher<{ ok: boolean }>();
@@ -289,15 +290,6 @@ export default function ColorsPage() {
       }, 600);
     }
   }, [deleteFetcher.state, deleteFetcher.data, deletePhase]);
-
-  useEffect(() => {
-    if (importFetcher.state === "idle" && importFetcher.data?.ok) {
-      shopify.toast.show(`Imported ${importFetcher.data.imported} color${importFetcher.data.imported !== 1 ? "s" : ""}`);
-      setShowImport(false);
-      setImportRows([]);
-      revalidator.revalidate();
-    }
-  }, [importFetcher.state, importFetcher.data]);
 
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -348,11 +340,36 @@ export default function ColorsPage() {
     URL.revokeObjectURL(url);
   }
 
-  function handleImport() {
-    importFetcher.submit(
-      { intent: "import", rows: JSON.stringify(importRows) },
-      { method: "post" }
+  async function handleImport() {
+    const rows = importRows;
+    setImportProgress({ done: 0, total: rows.length, current: rows[0]?.name ?? "" });
+    let imported = 0;
+    let failed = 0;
+    // One request per row so the UI can show real progress while images are
+    // re-hosted (each row can take a while). App Bridge injects the session token.
+    for (let i = 0; i < rows.length; i++) {
+      setImportProgress({ done: imported, total: rows.length, current: rows[i].name });
+      const fd = new FormData();
+      fd.set("intent", "import");
+      fd.set("rows", JSON.stringify([rows[i]]));
+      try {
+        const res = await fetch("/app/colors", { method: "POST", body: fd });
+        if (!res.ok) throw new Error(String(res.status));
+        imported++;
+      } catch {
+        failed++;
+      }
+      setImportProgress({ done: imported + failed, total: rows.length, current: rows[i].name });
+    }
+    setImportProgress(null);
+    shopify.toast.show(
+      failed
+        ? `Imported ${imported} color${imported !== 1 ? "s" : ""}, ${failed} failed`
+        : `Imported ${imported} color${imported !== 1 ? "s" : ""}`
     );
+    setShowImport(false);
+    setImportRows([]);
+    revalidator.revalidate();
   }
 
   function handleDeleteClick(color: KfoColor) {
@@ -684,7 +701,7 @@ export default function ColorsPage() {
 
       <Modal
         open={showImport}
-        onClose={() => setShowImport(false)}
+        onClose={() => { if (!importing) setShowImport(false); }}
         title="Import colors from CSV"
         size="large"
         primaryAction={
@@ -692,17 +709,34 @@ export default function ColorsPage() {
             ? {
                 content: `Import ${importRows.length} color${importRows.length !== 1 ? "s" : ""}`,
                 onAction: handleImport,
-                loading: importFetcher.state !== "idle",
+                loading: importing,
               }
             : undefined
         }
-        secondaryActions={[{ content: "Cancel", onAction: () => setShowImport(false) }]}
+        secondaryActions={[{ content: "Cancel", onAction: () => setShowImport(false), disabled: importing }]}
       >
         <Modal.Section>
           <BlockStack gap="400">
+            {importProgress && (
+              <BlockStack gap="200">
+                <Text as="p" variant="bodyMd">
+                  Importing {importProgress.done} / {importProgress.total}
+                  {importProgress.current ? ` — ${importProgress.current}` : ""}
+                </Text>
+                <ProgressBar
+                  progress={importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}
+                  size="small"
+                  tone="highlight"
+                />
+                <Text as="p" variant="bodySm" tone="subdued">
+                  Re-hosting images can take a few seconds each — please keep this open.
+                </Text>
+              </BlockStack>
+            )}
+
             <InlineStack gap="300" blockAlign="center">
-              <Button onClick={() => csvInputRef.current?.click()}>Choose CSV file</Button>
-              <Button variant="plain" onClick={downloadTemplate}>Download template</Button>
+              <Button onClick={() => csvInputRef.current?.click()} disabled={importing}>Choose CSV file</Button>
+              <Button variant="plain" onClick={downloadTemplate} disabled={importing}>Download template</Button>
             </InlineStack>
 
             <Text as="p" variant="bodySm" tone="subdued">
