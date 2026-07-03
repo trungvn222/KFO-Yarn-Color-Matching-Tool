@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigation } from "@remix-run/react";
+import { useLoaderData } from "@remix-run/react";
 import { useState, useRef, useCallback } from "react";
 import Papa from "papaparse";
 import {
@@ -19,11 +19,13 @@ import {
   Divider,
   DropZone,
   Thumbnail,
+  ProgressBar,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import { INDEXES } from "../algolia.server";
 import { getMerchantAlgoliaClient } from "../merchantAlgolia.server";
 import { requireMerchantConfig } from "../config.server";
+import { rehostImageFromUrl } from "../shopifyFiles.server";
 import type { KfoColor, KfoTag } from "../types/kfo";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -52,7 +54,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
 
   const config = await requireMerchantConfig(session.shop);
   if (!config) return json({ error: "Algolia not configured" }, { status: 400 });
@@ -71,21 +73,28 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const client = await getMerchantAlgoliaClient(session.shop);
 
-  const objects = rows.map((row: any) => ({
-    objectID: randomUUID(),
-    name: row.name,
-    popup_name: row.popup_name ?? "",
-    description: row.description ?? "",
-    position: Number(row.position) || 0,
-    image_url: row.image_url ?? "",
-    colors: row.colors,
-    tags: row.tags,
-    products: row.variant_ids.map((id: string, i: number) => ({
-      variant_id: id,
-      product_name: "",
-      position: i + 1,
-    })),
-  }));
+  // Re-host each combination thumbnail onto this store's CDN so it no longer
+  // depends on the source store. Same source URL is only uploaded once.
+  const imageCache = new Map<string, string>();
+  const objects = [];
+  for (const row of rows) {
+    const image_url = row.image_url ? await rehostImageFromUrl(admin, row.image_url, imageCache) : "";
+    objects.push({
+      objectID: randomUUID(),
+      name: row.name,
+      popup_name: row.popup_name ?? "",
+      description: row.description ?? "",
+      position: Number(row.position) || 0,
+      image_url,
+      colors: row.colors,
+      tags: row.tags,
+      products: row.variant_ids.map((id: string, i: number) => ({
+        variant_id: id,
+        product_name: "",
+        position: i + 1,
+      })),
+    });
+  }
 
   await client.saveObjects({ indexName: INDEXES.combinations, objects });
 
@@ -169,14 +178,13 @@ function copyText(text: string) {
 
 export default function ImportPage() {
   const { colors, tags } = useLoaderData<typeof loader>();
-  const submit = useSubmit();
-  const navigation = useNavigation();
-  const importing = navigation.state !== "idle";
 
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [parseError, setParseError] = useState("");
   const [fileName, setFileName] = useState("");
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; failed: number } | null>(null);
+  const [importProgress, setImportProgress] = useState<{ done: number; total: number; current: string } | null>(null);
+  const importing = importProgress !== null;
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -210,7 +218,7 @@ export default function ImportPage() {
   const validRows = rows.filter((r) => r.errors.length === 0);
   const invalidRows = rows.filter((r) => r.errors.length > 0);
 
-  function handleImport() {
+  async function handleImport() {
     if (!validRows.length) return;
     const data = validRows.map((r) => ({
       name: r.name,
@@ -222,8 +230,29 @@ export default function ImportPage() {
       tags: r.tags,
       variant_ids: r.variant_ids,
     }));
-    submit({ rows: JSON.stringify(data) }, { method: "post" });
-    setResult({ imported: validRows.length, skipped: invalidRows.length });
+    const skipped = invalidRows.length;
+    const CHUNK = 3;
+    setImportProgress({ done: 0, total: data.length, current: data[0]?.name ?? "" });
+    let imported = 0;
+    let failed = 0;
+    // 3 rows per request: shows progress while thumbnails re-host, and lets rows
+    // in the same batch share the image de-dup cache. App Bridge injects the token.
+    for (let i = 0; i < data.length; i += CHUNK) {
+      const batch = data.slice(i, i + CHUNK);
+      setImportProgress({ done: imported + failed, total: data.length, current: batch[0].name });
+      const fd = new FormData();
+      fd.set("rows", JSON.stringify(batch));
+      try {
+        const res = await fetch("/app/import", { method: "POST", body: fd });
+        if (!res.ok) throw new Error(String(res.status));
+        imported += batch.length;
+      } catch {
+        failed += batch.length;
+      }
+      setImportProgress({ done: imported + failed, total: data.length, current: batch[batch.length - 1].name });
+    }
+    setImportProgress(null);
+    setResult({ imported, skipped, failed });
     setRows([]);
     setFileName("");
   }
@@ -275,12 +304,32 @@ export default function ImportPage() {
       <Layout>
         <Layout.Section>
           <BlockStack gap="400">
+            {importProgress && (
+              <Card>
+                <BlockStack gap="200">
+                  <Text as="p" variant="bodyMd">
+                    Importing {importProgress.done} / {importProgress.total}
+                    {importProgress.current ? ` — ${importProgress.current}` : ""}
+                  </Text>
+                  <ProgressBar
+                    progress={importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}
+                    size="small"
+                    tone="highlight"
+                  />
+                  <Text as="p" variant="bodySm" tone="subdued">
+                    Re-hosting thumbnails can take a few seconds each — please keep this page open.
+                  </Text>
+                </BlockStack>
+              </Card>
+            )}
+
             {result && (
               <Banner
-                tone="success"
+                tone={result.failed > 0 ? "warning" : "success"}
                 title={`Imported ${result.imported} combination${result.imported !== 1 ? "s" : ""}`}
                 onDismiss={() => setResult(null)}
               >
+                {result.failed > 0 && <p>{result.failed} row{result.failed !== 1 ? "s" : ""} failed to import.</p>}
                 {result.skipped > 0 && <p>{result.skipped} row{result.skipped !== 1 ? "s" : ""} skipped (invalid).</p>}
               </Banner>
             )}
