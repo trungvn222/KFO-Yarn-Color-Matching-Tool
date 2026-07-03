@@ -283,24 +283,26 @@ export default function TagsPage() {
 
   async function handleImport() {
     const rows = importRows;
+    const CHUNK = 3;
     setImportProgress({ done: 0, total: rows.length, current: rows[0]?.name ?? "" });
     let imported = 0;
     let failed = 0;
-    // One request per row so the UI can show real progress while images are
-    // re-hosted (each row can take a while). App Bridge injects the session token.
-    for (let i = 0; i < rows.length; i++) {
-      setImportProgress({ done: imported, total: rows.length, current: rows[i].name });
+    // 3 rows per request: shows progress while images re-host, and lets rows in
+    // the same batch share the image de-dup cache. App Bridge injects the token.
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const batch = rows.slice(i, i + CHUNK);
+      setImportProgress({ done: imported + failed, total: rows.length, current: batch[0].name });
       const fd = new FormData();
       fd.set("intent", "import");
-      fd.set("rows", JSON.stringify([rows[i]]));
+      fd.set("rows", JSON.stringify(batch));
       try {
         const res = await fetch("/app/tags", { method: "POST", body: fd });
         if (!res.ok) throw new Error(String(res.status));
-        imported++;
+        imported += batch.length;
       } catch {
-        failed++;
+        failed += batch.length;
       }
-      setImportProgress({ done: imported + failed, total: rows.length, current: rows[i].name });
+      setImportProgress({ done: imported + failed, total: rows.length, current: batch[batch.length - 1].name });
     }
     setImportProgress(null);
     shopify.toast.show(
