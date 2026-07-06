@@ -298,7 +298,9 @@ export default function CombinationsIndex() {
       fd.set("intent", "import");
       fd.set("rows", JSON.stringify(batch));
       try {
-        const res = await fetch("/app", { method: "POST", body: fd });
+        // ponytail: must be /app?index — POST to /app hits the layout route
+        // (app.tsx, no action). The import action lives in this index route.
+        const res = await fetch("/app?index", { method: "POST", body: fd });
         if (!res.ok) throw new Error(String(res.status));
         imported += batch.length;
       } catch {
