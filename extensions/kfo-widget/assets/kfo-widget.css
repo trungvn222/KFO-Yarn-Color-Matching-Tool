@@ -332,6 +332,7 @@
   text-align: center;
   display: flex;
   flex-direction: column;
+  min-width: 0; /* prevent grid track blowout from oversized card images */
 }
 .kfo-card-img {
   position: relative;
@@ -866,6 +867,7 @@
   overflow: hidden;
   aspect-ratio: 1;
   background: #f3f4f6;
+  min-width: 0;
 }
 .kfo-show-all-card img,
 .kfo-show-all-card-bg {
@@ -1141,12 +1143,15 @@
     color: #3d3a35;
     margin: 0;
   }
+  .kfo-modal-fav-btn {
+    font-size: 16px;
+  }
   .kfo-modal-desc {
     font-family: "Roboto", sans-serif;
     font-size: 14px;
     color: #3d3a35;
     text-align: center;
-    margin: 0;
+    margin: -10px 0 0;
   }
   .kfo-modal-products-grid {
     width: 100%;
