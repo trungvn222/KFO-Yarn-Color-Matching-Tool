@@ -7,7 +7,23 @@
 ></div>
 
 {{ 'kfo-widget.css' | asset_url | stylesheet_tag }}
-<script src="{{ 'kfo-product-favorites.js' | asset_url }}" defer></script>
+<script>
+  (function () {
+    var src = '{{ 'kfo-product-favorites.js' | asset_url }}';
+
+    // A static <script src defer> tag does NOT execute when this section is
+    // injected via innerHTML (Shopify Section Rendering API / instant-nav
+    // tools like shopify-perf-kit). A <script> created with createElement
+    // always executes, so we inject it programmatically instead (same
+    // pattern as combinations.liquid).
+    if (document.querySelector('script[data-kfo-product-favorites]')) return;
+    var s = document.createElement('script');
+    s.src = src;
+    s.defer = true;
+    s.setAttribute('data-kfo-product-favorites', '');
+    document.head.appendChild(s);
+  })();
+</script>
 
 {% schema %}
 {

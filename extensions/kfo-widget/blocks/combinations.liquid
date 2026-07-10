@@ -17,10 +17,12 @@
     data-heart-url="{{ 'kfo-heart.svg' | asset_url }}"
     data-heart-active-url="{{ 'kfo-heart-active.svg' | asset_url }}"
     data-favorites-url="{{ block.settings.favorites_url }}"
+    data-modal-js-url="{{ 'kfo-modal.js' | asset_url }}"
     {{ block.shopify_attributes }}
   ></div>
 
   {{ 'kfo-widget.css' | asset_url | stylesheet_tag }}
+  {{ 'kfo-modal.css' | asset_url | stylesheet_tag }}
   <script>
     (function () {
       var src = '{{ 'kfo-widget.js' | asset_url }}';
