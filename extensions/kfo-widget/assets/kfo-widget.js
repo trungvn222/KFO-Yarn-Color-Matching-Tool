@@ -668,6 +668,12 @@
       showLessCard?.addEventListener("click", async () => {
         sectionPerPage[colorId] = INITIAL;
         await loadSectionCards(colorId, sectionEl, colorMap);
+        // The user usually scrolled deep into the expanded list to reach this
+        // button — once it collapses back down, that same scroll position
+        // lands on unrelated content further down the page. Bring this
+        // section's start back into view so they land back on the color/
+        // combination they were looking at.
+        sectionEl.scrollIntoView({ block: "start", behavior: "smooth" });
       });
     }
 
