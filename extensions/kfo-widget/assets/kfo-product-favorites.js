@@ -73,7 +73,7 @@
       const handles = getFavs();
 
       if (!handles.length) {
-        grid.innerHTML = '<p class="kfo-empty">No favorite products yet.<br>Click &#9825; on a product page to save it here.</p>';
+        grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
         document.getElementById('kfo-pfav-pagination').innerHTML = '';
         return;
       }
@@ -134,7 +134,7 @@
             card.remove();
             const grid = document.getElementById('kfo-pfav-grid');
             if (grid && !grid.querySelector('.kfo-pfav-card')) {
-              grid.innerHTML = '<p class="kfo-empty">No favorite products yet.<br>Click &#9825; on a product page to save it here.</p>';
+              grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
             }
           }
         });

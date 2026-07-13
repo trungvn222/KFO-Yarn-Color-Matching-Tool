@@ -62,7 +62,7 @@
         card.remove();
         const grid = document.getElementById('kfo-fav-grid');
         if (grid && !grid.querySelector('.kfo-card')) {
-          grid.innerHTML = '<p class="kfo-empty">No favorites yet.<br>Click &#9825; on a combination in the shop to save it here.</p>';
+          grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
         }
       },
     });
@@ -77,7 +77,7 @@
       const favIds = getFavs();
 
       if (!favIds.length) {
-        grid.innerHTML = '<p class="kfo-empty">No favorites yet.<br>Click &#9825; on a combination in the shop to save it here.</p>';
+        grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
         return;
       }
 
@@ -129,7 +129,7 @@
           card.remove();
           const grid = document.getElementById('kfo-fav-grid');
           if (!grid.querySelector('.kfo-card')) {
-            grid.innerHTML = '<p class="kfo-empty">No favorites yet.<br>Click &#9825; on a combination in the shop to save it here.</p>';
+            grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
           }
         });
 

@@ -322,6 +322,32 @@
   color: #6b7280;
   padding: 48px 0;
 }
+.kfo-empty-text {
+  font-size: 20px;
+  font-weight: 400;
+  color: #6b7280;
+  margin: 0 0 24px;
+}
+.kfo-empty-btn {
+  display: inline-block;
+  border: 1px solid #3d3a35;
+  padding: 11px 24px;
+  font-family: "Raleway", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 2.1px;
+  text-transform: uppercase;
+  color: #3d3a35;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.kfo-empty-btn:hover {
+  background: #3d3a35;
+  color: #fff;
+}
 
 /* Card */
 .kfo-card {
