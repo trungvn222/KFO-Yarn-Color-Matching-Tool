@@ -89,7 +89,7 @@
       });
 
       if (!hits.length) {
-        grid.innerHTML = '<p class="kfo-empty">No favorites found.</p>';
+        grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
         return;
       }
 

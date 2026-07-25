@@ -347,8 +347,6 @@
   /* ── Popup: centered card per Figma mobile (node 3113:6985) ── */
   .kfo-modal {
     flex-direction: column;
-    background: #f3f3f2;
-    padding: 48px 16px 20px;
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
@@ -360,11 +358,7 @@
   }
   .kfo-modal-left {
     flex: none;
-    /* Same width as a single product tile below (grid: 2 cols, 14px gap) */
-    width: calc((100% - 14px) / 2);
-    aspect-ratio: 1;
     height: auto;
-    background: #f3f3f2;
   }
   /* Heart + zoom always visible on touch (no hover on mobile) */
   .kfo-modal-img-actions {
@@ -379,12 +373,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
   }
   .kfo-modal-close {
     position: absolute;
-    top: 12px;
-    right: 12px;
   }
   .kfo-modal-title {
     font-family: "Raleway", sans-serif;
@@ -403,11 +394,6 @@
     font-size: 14px;
     color: #3d3a35;
     text-align: center;
-    margin: -10px 0 0;
-  }
-  .kfo-modal-products-grid {
-    width: 100%;
-    gap: 14px;
   }
   .kfo-add-to-cart-btn {
     font-size: 14px;
@@ -415,7 +401,6 @@
     letter-spacing: 2.1px;
     border-color: #3d3a35;
     color: #3d3a35;
-    padding: 10px 4px;
   }
   .kfo-add-to-cart-btn:hover {
     background: #3d3a35;
@@ -432,8 +417,6 @@
   }
   .kfo-skel-left {
     flex: none;
-    width: calc((100% - 14px) / 2);
-    aspect-ratio: 1;
     height: auto;
   }
   .kfo-skel-right {
@@ -441,14 +424,82 @@
     align-items: center;
   }
 }
-
-@media (max-width: 480px) {
-  .kfo-modal-products-grid {
-    gap: 10px;
+/* Figma tablet spec (481-768, node 4241-4578): fixed 448px centered card */
+@media (min-width: 481px) and (max-width: 768px) {
+  .kfo-modal {
+    max-width: 448px;
+    background: #f3f3f3;
+    padding: 50px 50px 20px;
   }
-  .kfo-modal-left,
+  .kfo-modal-left {
+    width: 280px;
+    aspect-ratio: 1;
+    background: #f3f3f3;
+  }
+  .kfo-skel-left {
+    width: 280px;
+    aspect-ratio: 1;
+  }
+  .kfo-modal-right {
+    gap: 20px;
+  }
+  .kfo-modal-title {
+    line-height: 1.2;
+  }
+  .kfo-modal-fav-btn {
+    display: none;
+  }
+  .kfo-modal-desc {
+    margin: 0;
+    line-height: 1.2;
+  }
+  .kfo-modal-products-grid {
+    width: auto;
+    grid-template-columns: repeat(2, 160px);
+    gap: 28px;
+    justify-content: center;
+  }
+  .kfo-add-to-cart-btn {
+    padding: 0 10px;
+    /* letter-spacing doesn't support %; 15% of the 14px font-size */
+    letter-spacing: 2.1px;
+  }
+  .kfo-modal-close {
+    top: 13px;
+    right: 20px;
+  }
+}
+@media (max-width: 480px) {
+  .kfo-modal {
+    background: #f3f3f2;
+    padding: 48px 16px 20px;
+  }
+  .kfo-modal-left {
+    /* Same width as a single product tile below (grid: 2 cols, 10px gap) */
+    width: calc((100% - 10px) / 2);
+    aspect-ratio: 1;
+    background: #f3f3f2;
+  }
   .kfo-skel-left {
     width: calc((100% - 10px) / 2);
+    aspect-ratio: 1;
+  }
+  .kfo-modal-right {
+    gap: 16px;
+  }
+  .kfo-modal-desc {
+    margin: -10px 0 0;
+  }
+  .kfo-modal-products-grid {
+    width: 100%;
+    gap: 10px;
+  }
+  .kfo-add-to-cart-btn {
+    padding: 10px 4px;
+  }
+  .kfo-modal-close {
+    top: 12px;
+    right: 12px;
   }
 }
 
@@ -505,5 +556,8 @@
   .kfo-modal-left {
     flex: 0 0 50%;
     max-width: 50%;
+  }
+  .kfo-modal-products-grid {
+    grid-template-columns: repeat(2, auto);
   }
 }
