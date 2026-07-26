@@ -343,13 +343,16 @@
   height: 36px;
 }
 
-@media (max-width: 768px) {
-  /* ── Popup: centered card per Figma mobile (node 3113:6985) ── */
+/* Figma tablet spec (481-768, node 4241-4578): fixed 448px centered card */
+@media (min-width: 481px) and (max-width: 768px) {
   .kfo-modal {
     flex-direction: column;
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
+    max-width: 448px;
+    background: #f3f3f3;
+    padding: 50px 50px 20px;
   }
   .kfo-modal-body {
     flex-direction: column;
@@ -359,11 +362,20 @@
   .kfo-modal-left {
     flex: none;
     height: auto;
+    width: 280px;
+    aspect-ratio: 1;
+    background: #f3f3f3;
   }
   /* Heart + zoom always visible on touch (no hover on mobile) */
   .kfo-modal-img-actions {
     opacity: 1;
     background: transparent;
+  }
+  .kfo-skel-left {
+    flex: none;
+    height: auto;
+    width: 280px;
+    aspect-ratio: 1;
   }
   .kfo-modal-right {
     position: static;
@@ -373,9 +385,115 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 20px;
   }
   .kfo-modal-close {
     position: absolute;
+    top: 13px;
+    right: 20px;
+  }
+  .kfo-modal-title {
+    font-family: "Raleway", sans-serif;
+    font-size: 20px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-align: center;
+    color: #3d3a35;
+    margin: 0;
+    line-height: 1.2;
+  }
+  .kfo-modal-fav-btn {
+    font-size: 16px;
+    display: none;
+  }
+  .kfo-modal-desc {
+    font-family: "Roboto", sans-serif;
+    font-size: 14px;
+    color: #3d3a35;
+    text-align: center;
+    margin: 0;
+    line-height: 1.2;
+  }
+  .kfo-modal-products-grid {
+    width: auto;
+    grid-template-columns: repeat(2, 160px);
+    gap: 28px;
+    justify-content: center;
+  }
+  .kfo-add-to-cart-btn {
+    font-size: 14px;
+    font-weight: 400;
+    border-color: #3d3a35;
+    color: #3d3a35;
+    padding: 0 10px;
+    /* letter-spacing doesn't support %; 15% of the 14px font-size */
+    letter-spacing: 2.1px;
+  }
+  .kfo-add-to-cart-btn:hover {
+    background: #3d3a35;
+    color: #fff;
+  }
+  .kfo-cart-msg {
+    font-size: 14px;
+  }
+  /* Skeleton matches the centered square image */
+  .kfo-modal-skeleton {
+    flex-direction: column;
+    align-items: center;
+    min-height: auto;
+  }
+  .kfo-skel-right {
+    width: 100%;
+    align-items: center;
+  }
+}
+@media (max-width: 480px) {
+  .kfo-modal {
+    flex-direction: column;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    background: #f3f3f2;
+    padding: 48px 16px 20px;
+  }
+  .kfo-modal-body {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  .kfo-modal-left {
+    flex: none;
+    height: auto;
+    /* Same width as a single product tile below (grid: 2 cols, 10px gap) */
+    width: calc((100% - 10px) / 2);
+    aspect-ratio: 1;
+    background: #f3f3f2;
+  }
+  /* Heart + zoom always visible on touch (no hover on mobile) */
+  .kfo-modal-img-actions {
+    opacity: 1;
+    background: transparent;
+  }
+  .kfo-skel-left {
+    flex: none;
+    height: auto;
+    width: calc((100% - 10px) / 2);
+    aspect-ratio: 1;
+  }
+  .kfo-modal-right {
+    position: static;
+    width: 100%;
+    overflow-y: visible;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .kfo-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
   }
   .kfo-modal-title {
     font-family: "Raleway", sans-serif;
@@ -394,6 +512,11 @@
     font-size: 14px;
     color: #3d3a35;
     text-align: center;
+    margin: -10px 0 0;
+  }
+  .kfo-modal-products-grid {
+    width: 100%;
+    gap: 10px;
   }
   .kfo-add-to-cart-btn {
     font-size: 14px;
@@ -401,6 +524,7 @@
     letter-spacing: 2.1px;
     border-color: #3d3a35;
     color: #3d3a35;
+    padding: 10px 4px;
   }
   .kfo-add-to-cart-btn:hover {
     background: #3d3a35;
@@ -415,95 +539,14 @@
     align-items: center;
     min-height: auto;
   }
-  .kfo-skel-left {
-    flex: none;
-    height: auto;
-  }
   .kfo-skel-right {
     width: 100%;
     align-items: center;
   }
 }
-/* Figma tablet spec (481-768, node 4241-4578): fixed 448px centered card */
-@media (min-width: 481px) and (max-width: 768px) {
-  .kfo-modal {
-    max-width: 448px;
-    background: #f3f3f3;
-    padding: 50px 50px 20px;
-  }
-  .kfo-modal-left {
-    width: 280px;
-    aspect-ratio: 1;
-    background: #f3f3f3;
-  }
-  .kfo-skel-left {
-    width: 280px;
-    aspect-ratio: 1;
-  }
-  .kfo-modal-right {
-    gap: 20px;
-  }
-  .kfo-modal-title {
-    line-height: 1.2;
-  }
-  .kfo-modal-fav-btn {
-    display: none;
-  }
-  .kfo-modal-desc {
-    margin: 0;
-    line-height: 1.2;
-  }
-  .kfo-modal-products-grid {
-    width: auto;
-    grid-template-columns: repeat(2, 160px);
-    gap: 28px;
-    justify-content: center;
-  }
-  .kfo-add-to-cart-btn {
-    padding: 0 10px;
-    /* letter-spacing doesn't support %; 15% of the 14px font-size */
-    letter-spacing: 2.1px;
-  }
-  .kfo-modal-close {
-    top: 13px;
-    right: 20px;
-  }
-}
-@media (max-width: 480px) {
-  .kfo-modal {
-    background: #f3f3f2;
-    padding: 48px 16px 20px;
-  }
-  .kfo-modal-left {
-    /* Same width as a single product tile below (grid: 2 cols, 10px gap) */
-    width: calc((100% - 10px) / 2);
-    aspect-ratio: 1;
-    background: #f3f3f2;
-  }
-  .kfo-skel-left {
-    width: calc((100% - 10px) / 2);
-    aspect-ratio: 1;
-  }
-  .kfo-modal-right {
-    gap: 16px;
-  }
-  .kfo-modal-desc {
-    margin: -10px 0 0;
-  }
-  .kfo-modal-products-grid {
-    width: 100%;
-    gap: 10px;
-  }
-  .kfo-add-to-cart-btn {
-    padding: 10px 4px;
-  }
-  .kfo-modal-close {
-    top: 12px;
-    right: 12px;
-  }
-}
 
-@media (min-width: 769px) {
+/* Wide desktop only (≥1025px). 769-1024 has its own block below. */
+@media (min-width: 1025px) {
   /* Popup: size 820x419 -> 1200x630; image 369x419 -> 550x550 */
   .kfo-modal {
     max-width: 1200px;
@@ -551,13 +594,45 @@
   }
 }
 
-/* Tablet/small desktop: fluid 50/50 split instead of the fixed 630px image column */
+/* Tablet/small desktop: fluid 50/50 split instead of the fixed 630px image
+   column. NOT yet independently verified against a 769-1024 Figma modal
+   frame (node 4221-8192, blocked by API rate-limit as of this pass) — the
+   non-fluid-specific values below (title/desc size, main-img, products-grid
+   gap) are carried over unchanged from the old shared ≥769px rule. */
 @media (min-width: 769px) and (max-width: 1024px) {
   .kfo-modal-left {
     flex: 0 0 50%;
     max-width: 50%;
+    box-sizing: border-box;
+    padding: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .kfo-modal-main-img,
+  .kfo-modal-main-img--placeholder {
+    width: 550px;
+    height: 550px;
+    flex-shrink: 0;
+  }
+  .kfo-modal-title {
+    font-family: "Raleway", sans-serif;
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.2;
+    margin-bottom: 30px;
+  }
+  .kfo-modal-desc {
+    font-size: 18px;
+    margin-bottom: 40px;
+  }
+  .kfo-modal-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
   }
   .kfo-modal-products-grid {
     grid-template-columns: repeat(2, auto);
+    gap: 32px;
   }
 }
