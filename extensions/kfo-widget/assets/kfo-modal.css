@@ -67,8 +67,8 @@
    circular background, so the button is just a transparent, full-size wrapper
    (a white circle here would double up with the icon's own circle). */
 .kfo-modal-img-btn {
-  width: 44px;
-  height: 44px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   background: transparent;
   border: none;
@@ -103,16 +103,24 @@
   position: absolute;
   top: 12px;
   right: 12px;
+  width: 21px;
+  height: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
-  font-size: 18px;
   cursor: pointer;
-  color: #6b7280;
-  padding: 4px 8px;
-  line-height: 1;
+  padding: 0;
+  line-height: 0;
+  transition: opacity 0.15s;
 }
 .kfo-modal-close:hover {
-  color: #111;
+  opacity: 0.6;
+}
+.kfo-modal-close svg {
+  width: 100%;
+  height: 100%;
 }
 
 .kfo-modal-title {
@@ -260,9 +268,8 @@
   top: 8px;
   right: 8px;
   z-index: 2;
-  background: rgba(0, 0, 0, 0.55);
+  background: none;
   border: none;
-  color: #fff;
   font-size: 1.1rem;
   width: 36px;
   height: 36px;
@@ -271,10 +278,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
 }
-.kfo-lightbox-close:hover {
-  background: rgba(0, 0, 0, 0.8);
+.kfo-lightbox-close svg {
+  width: 21px;
+  height: 21px;
 }
 /* When zoomed the image overflows & scrolls, so keep the close pinned on-screen */
 .kfo-lightbox.zoomed .kfo-lightbox-close {
@@ -406,6 +413,10 @@
     font-size: 16px;
     display: none;
   }
+  .kfo-modal-fav-icon {
+    width: 26px;
+    height: 26px;
+  }
   .kfo-modal-desc {
     font-family: "Roboto", sans-serif;
     font-size: 14px;
@@ -507,6 +518,10 @@
   .kfo-modal-fav-btn {
     font-size: 16px;
   }
+  .kfo-modal-fav-icon {
+    width: 26px;
+    height: 26px;
+  }
   .kfo-modal-desc {
     font-family: "Roboto", sans-serif;
     font-size: 14px;
@@ -581,6 +596,14 @@
     font-size: 18px;
     margin-bottom: 40px;
   }
+  .kfo-modal-fav-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .kfo-modal-img-btn {
+    width: 40px;
+    height: 40px;
+  }
   /* Right content box vertically centered against the image (slide 3 - 4) */
   .kfo-modal-right {
     display: flex;
@@ -604,27 +627,38 @@
     flex: 0 0 50%;
     max-width: 50%;
     box-sizing: border-box;
-    padding: 40px;
+    padding: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
+  /* Interpolated from a live-screenshot reference (image/product/desc sizes
+     scaled between the confirmed 481-768 and wide-desktop values) — user
+     will fine-tune exact px later. */
   .kfo-modal-main-img,
   .kfo-modal-main-img--placeholder {
-    width: 550px;
-    height: 550px;
+    width: 420px;
+    height: 420px;
     flex-shrink: 0;
   }
+  /* Figma-confirmed for this breakpoint: 20px, not 28px */
   .kfo-modal-title {
     font-family: "Raleway", sans-serif;
-    font-size: 28px;
+    font-size: 20px;
     font-weight: 400;
     line-height: 1.2;
-    margin-bottom: 30px;
+    letter-spacing: 0;
+    color: #3d3a35;
+    margin-bottom: 10px;
   }
   .kfo-modal-desc {
-    font-size: 18px;
-    margin-bottom: 40px;
+    font-family: "Roboto", sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.2;
+    letter-spacing: 0;
+    color: #3d3a35;
+    margin-bottom: 20px;
   }
   .kfo-modal-right {
     display: flex;
@@ -632,7 +666,39 @@
     justify-content: safe center;
   }
   .kfo-modal-products-grid {
-    grid-template-columns: repeat(2, auto);
-    gap: 32px;
+    grid-template-columns: repeat(2, 140px);
+    gap: 20px;
+  }
+  .kfo-add-to-cart-btn {
+    font-family: "Raleway", sans-serif;
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 18.36px;
+    /* letter-spacing doesn't support %; 15% of the 12px font-size */
+    letter-spacing: 1.8px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .kfo-modal-close {
+    top: 20px;
+    right: 20px;
+  }
+  .kfo-modal-fav-btn {
+    font-family: "Roboto", sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.2;
+    letter-spacing: 0;
+    margin-bottom: 10px;
+  }
+  /* Match .kfo-heart-btn size at this breakpoint (35px) instead of the
+     fixed 44px used everywhere else */
+  .kfo-modal-fav-icon {
+    width: 35px;
+    height: 35px;
+  }
+  .kfo-modal-img-btn {
+    width: 35px;
+    height: 35px;
   }
 }

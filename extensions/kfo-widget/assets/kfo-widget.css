@@ -320,7 +320,6 @@
   grid-column: 1 / -1;
   text-align: center;
   color: #6b7280;
-  padding: 48px 0;
 }
 .kfo-empty-text {
   font-size: 20px;
@@ -426,6 +425,10 @@
   line-height: 1.4;
   color: #3d3a35;
   flex: 1;
+}
+/* Favorites gallery: no combination name on cards, at any viewport */
+#kfo-favorites .kfo-card-name {
+  display: none;
 }
 
 /* View detail button */
@@ -866,12 +869,6 @@
   .kfo-sections {
     gap: 60px;
   }
-  /* Empty state (favorites gallery / no results), node 4221-8065.
-     Theme section spacing above already contributes 40px, so padding-top:0
-     keeps the title->message gap at exactly 40px total. */
-  .kfo-empty {
-    padding: 0;
-  }
   .kfo-empty-text {
     font-size: 28px;
     color: #3d3a35;
@@ -1016,6 +1013,16 @@
     width: 40px;
     height: 40px;
   }
+  .kfo-show-all-overlay {
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+  .kfo-show-all-overlay svg {
+    width: 21px;
+    height: 21px;
+  }
 }
 
 /* Tablet/small desktop spec (769-1024, node 4221-6683 "YMT_Tablet_1024") */
@@ -1083,11 +1090,9 @@
   .kfo-see-more-btn {
     width: 120px;
   }
-  /* Not yet Figma-verified at this breakpoint specifically — carried over
-     unchanged from the old shared ≥769px rule. */
-  #kfo-favorites .kfo-grid {
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  }
+  /* Favorites gallery uses the same fixed 4-column .kfo-grid rule above —
+     no ID-scoped override here (that was beating it via specificity and
+     silently reverting favorites to auto-fill(400px), i.e. 2 columns). */
   .kfo-sections {
     gap: 60px;
   }
