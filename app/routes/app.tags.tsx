@@ -89,6 +89,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session, admin } = await authenticate.admin(request);
+  try {
+    return await tagsAction(request, session, admin);
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    console.error("[app.tags] action failed:", error);
+    return json({ ok: false, error: "Something went wrong — please try again." });
+  }
+};
+
+async function tagsAction(
+  request: Request,
+  session: { shop: string },
+  admin: Awaited<ReturnType<typeof authenticate.admin>>["admin"]
+) {
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
 
@@ -170,7 +184,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   return json({ ok: false });
-};
+}
 
 export default function TagsPage() {
   const { tags, allIds, tagCounts, q, page, perPage, nbPages, nbHits } = useLoaderData<typeof loader>();
@@ -212,6 +226,7 @@ export default function TagsPage() {
       const params = new URLSearchParams();
       if (queryValue) params.set("q", queryValue);
       const res = await fetch(`/app/tags/export?${params}`);
+      if (!res.ok) throw new Error(String(res.status));
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -219,6 +234,8 @@ export default function TagsPage() {
       a.download = `kfo-tags-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
+    } catch {
+      shopify.toast.show("Export failed — please try again.", { isError: true });
     } finally {
       setExporting(false);
     }
@@ -329,22 +346,30 @@ export default function TagsPage() {
   const [deletePhase, setDeletePhase] = useState<"checking" | "confirming" | "deleting" | "done">("checking");
   const [progress, setProgress] = useState(0);
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const checkFetcher = useFetcher<{ count: number }>();
-  const deleteFetcher = useFetcher<{ ok: boolean; removed: number }>();
+  const checkFetcher = useFetcher<{ count: number; error?: string }>();
+  const deleteFetcher = useFetcher<{ ok: boolean; removed: number; error?: string }>();
 
   // Save (create/edit) fetcher — avoids full-page navigation
-  const saveFetcher = useFetcher<{ ok: boolean }>();
+  const saveFetcher = useFetcher<{ ok: boolean; error?: string }>();
   const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (saveFetcher.state === "idle" && saveFetcher.data?.ok) {
+    if (saveFetcher.state !== "idle" || !saveFetcher.data) return;
+    if (saveFetcher.data.ok) {
       setSavingId(null);
       revalidator.revalidate();
+    } else if (saveFetcher.data.error) {
+      setSavingId(null);
+      shopify.toast.show(saveFetcher.data.error, { isError: true });
     }
   }, [saveFetcher.state, saveFetcher.data]);
 
   useEffect(() => {
-    if (checkFetcher.state === "idle" && checkFetcher.data != null && deletePhase === "checking") {
+    if (checkFetcher.state !== "idle" || checkFetcher.data == null || deletePhase !== "checking") return;
+    if (checkFetcher.data.error) {
+      shopify.toast.show(checkFetcher.data.error, { isError: true });
+      setDeletingTag(null);
+    } else {
       setDeletePhase("confirming");
     }
   }, [checkFetcher.state, checkFetcher.data, deletePhase]);
@@ -360,7 +385,8 @@ export default function TagsPage() {
   }, [deletePhase]);
 
   useEffect(() => {
-    if (deleteFetcher.state === "idle" && deleteFetcher.data?.ok && deletePhase === "deleting") {
+    if (deleteFetcher.state !== "idle" || !deleteFetcher.data || deletePhase !== "deleting") return;
+    if (deleteFetcher.data.ok) {
       if (progressRef.current) clearInterval(progressRef.current);
       setProgress(100);
       setTimeout(() => {
@@ -368,6 +394,12 @@ export default function TagsPage() {
         setDeletePhase("checking");
         setProgress(0);
       }, 600);
+    } else if (deleteFetcher.data.error) {
+      if (progressRef.current) clearInterval(progressRef.current);
+      shopify.toast.show(deleteFetcher.data.error, { isError: true });
+      setDeletingTag(null);
+      setDeletePhase("checking");
+      setProgress(0);
     }
   }, [deleteFetcher.state, deleteFetcher.data, deletePhase]);
 

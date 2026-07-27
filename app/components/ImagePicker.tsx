@@ -106,6 +106,7 @@ export function ImagePicker({
     const file = e.target.files?.[0];
     if (!file) return;
     setImageUploading(true);
+    setUploadError("");
     try {
       const token = await shopify.idToken();
       const fd = new FormData();
@@ -137,6 +138,8 @@ export function ImagePicker({
       } else {
         setUploadError(data.error ?? "Upload failed");
       }
+    } catch {
+      setUploadError("Upload failed — check your connection and try again.");
     } finally {
       setImageUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

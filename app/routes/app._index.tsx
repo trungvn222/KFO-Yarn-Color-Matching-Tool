@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigation, useRevalidator, useFetcher } from "@remix-run/react";
+import { useLoaderData, useSubmit, useNavigation, useRevalidator, useFetcher, useSearchParams, useActionData } from "@remix-run/react";
 import Papa from "papaparse";
 import {
   Page,
@@ -29,6 +29,7 @@ import {
   Modal,
 } from "@shopify/polaris";
 import { useState, useRef, useEffect } from "react";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { CombinationForm, type CombinationFormHandle } from "../components/CombinationForm";
 import { authenticate } from "../shopify.server";
 import { INDEXES } from "../algolia.server";
@@ -95,6 +96,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session, admin } = await authenticate.admin(request);
+  try {
+    return await indexAction(request, session, admin);
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    console.error("[app._index] action failed:", error);
+    return json({ ok: false, error: "Something went wrong — please try again." });
+  }
+};
+
+async function indexAction(
+  request: Request,
+  session: { shop: string },
+  admin: Awaited<ReturnType<typeof authenticate.admin>>["admin"]
+) {
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
 
@@ -144,7 +159,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   return json({ ok: false });
-};
+}
 
 const PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -218,7 +233,25 @@ export default function CombinationsIndex() {
   const submit = useSubmit();
   const navigation = useNavigation();
   const revalidator = useRevalidator();
+  const shopify = useAppBridge();
   const loading = navigation.state !== "idle";
+  const actionData = useActionData<typeof action>();
+
+  useEffect(() => {
+    if (actionData && "error" in actionData && typeof actionData.error === "string" && actionData.error) {
+      shopify.toast.show(actionData.error, { isError: true });
+    }
+  }, [actionData]);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const notice = searchParams.get("notice");
+  function dismissNotice() {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("notice");
+      return next;
+    }, { replace: true });
+  }
 
   const [activeTags, setActiveTags] = useState<string[]>(selectedTagSlugs);
   const [activeColors, setActiveColors] = useState<string[]>(selectedColorIds);
@@ -317,12 +350,15 @@ export default function CombinationsIndex() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [modalKey, setModalKey] = useState(0);
   const formRef = useRef<CombinationFormHandle>(null);
-  const newFetcher = useFetcher<{ ok: boolean }>();
+  const newFetcher = useFetcher<{ ok: boolean; error?: string }>();
   const newSaving = newFetcher.state !== "idle";
 
   useEffect(() => {
-    if (newFetcher.state === "idle" && newFetcher.data?.ok) {
+    if (newFetcher.state !== "idle" || !newFetcher.data) return;
+    if (newFetcher.data.ok) {
       revalidator.revalidate();
+    } else if (newFetcher.data.error) {
+      shopify.toast.show(newFetcher.data.error, { isError: true });
     }
   }, [newFetcher.state, newFetcher.data]);
 
@@ -347,16 +383,30 @@ export default function CombinationsIndex() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const editFormRef = useRef<CombinationFormHandle>(null);
   const editLoadFetcher = useFetcher<{ combination: KfoCombination }>();
-  const editSaveFetcher = useFetcher<{ ok: boolean; combination: KfoCombination }>();
+  const editSaveFetcher = useFetcher<{ ok: boolean; combination?: KfoCombination; error?: string; objectID?: string }>();
   const editSaving = editSaveFetcher.state !== "idle";
   const [overrides, setOverrides] = useState<Record<string, KfoCombination>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (editSaveFetcher.state === "idle" && editSaveFetcher.data?.ok) {
+    if (editSaveFetcher.state !== "idle" || !editSaveFetcher.data) return;
+    if (editSaveFetcher.data.ok) {
       const updated = editSaveFetcher.data.combination;
       if (updated) setOverrides((prev) => ({ ...prev, [updated.objectID]: updated }));
       setSavingId(null);
+    } else if (editSaveFetcher.data.error) {
+      shopify.toast.show(editSaveFetcher.data.error, { isError: true });
+      setSavingId(null);
+      // Drop the optimistic update so the list falls back to the last known-good data.
+      const failedId = editSaveFetcher.data.objectID;
+      if (failedId) {
+        setOverrides((prev) => {
+          const next = { ...prev };
+          delete next[failedId];
+          return next;
+        });
+      }
+      revalidator.revalidate();
     }
   }, [editSaveFetcher.state, editSaveFetcher.data]);
 
@@ -433,6 +483,7 @@ export default function CombinationsIndex() {
       if (activeTags.length) params.set("tags", activeTags.join(","));
       if (activeColors.length) params.set("colors", activeColors.join(","));
       const res = await fetch(`/app/export?${params}`);
+      if (!res.ok) throw new Error(String(res.status));
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -440,6 +491,8 @@ export default function CombinationsIndex() {
       a.download = `kfo-combinations-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
+    } catch {
+      shopify.toast.show("Export failed — please try again.", { isError: true });
     } finally {
       setExporting(false);
     }
@@ -480,6 +533,13 @@ export default function CombinationsIndex() {
       ]}
     >
       <Layout>
+        {notice === "combination_not_found" && (
+          <Layout.Section variant="fullWidth">
+            <Banner tone="warning" title="Combination not found" onDismiss={dismissNotice}>
+              That combination no longer exists — it may have already been deleted.
+            </Banner>
+          </Layout.Section>
+        )}
         <Layout.Section variant="fullWidth">
           <Card>
             <BlockStack gap="400">

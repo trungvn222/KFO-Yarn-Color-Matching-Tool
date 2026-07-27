@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Links,
   Meta,
@@ -6,7 +7,7 @@ import {
   ScrollRestoration,
 } from "@remix-run/react";
 
-export default function App() {
+function Document({ children }: { children: ReactNode }) {
   return (
     <html>
       <head>
@@ -21,10 +22,32 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Outlet />
+        {children}
         <ScrollRestoration />
         <Scripts />
       </body>
     </html>
+  );
+}
+
+export default function App() {
+  return (
+    <Document>
+      <Outlet />
+    </Document>
+  );
+}
+
+// Last-resort net: only reached if an error escapes every nested route's own
+// ErrorBoundary (e.g. app.tsx's own loader/auth failing). Keeps the failure
+// contained to a plain message instead of Remix's default blank crash page.
+export function ErrorBoundary() {
+  return (
+    <Document>
+      <div style={{ padding: 40, fontFamily: "sans-serif", textAlign: "center" }}>
+        <h1>Something went wrong</h1>
+        <p>Please refresh the page. If the problem continues, try reopening the app from Shopify admin.</p>
+      </div>
+    </Document>
   );
 }

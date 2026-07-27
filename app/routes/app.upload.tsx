@@ -46,6 +46,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
+  try {
+    return await uploadAction(admin, request);
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    console.error("[app.upload] action failed:", error);
+    return json({ error: "Upload failed — please try again." }, { status: 500 });
+  }
+};
+
+async function uploadAction(admin: Awaited<ReturnType<typeof authenticate.admin>>["admin"], request: Request) {
   const formData = await request.formData();
   const file = formData.get("file") as File;
 
@@ -154,4 +164,4 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   return json({ url: target.resourceUrl });
-};
+}

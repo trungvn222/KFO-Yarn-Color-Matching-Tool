@@ -26,31 +26,40 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session, redirect } = await authenticate.admin(request);
   const formData = await request.formData();
-  const raw = formData.get("data") as string;
-  const data = JSON.parse(raw);
-  const client = await getMerchantAlgoliaClient(session.shop);
+  try {
+    const raw = formData.get("data") as string;
+    const data = JSON.parse(raw);
+    const client = await getMerchantAlgoliaClient(session.shop);
 
-  const objectID = randomUUID();
+    const objectID = randomUUID();
 
-  const { taskID } = await client.saveObject({
-    indexName: INDEXES.combinations,
-    body: {
-      objectID,
-      name: data.name,
-      popup_name: data.popup_name || "",
-      description: data.description || "",
-      image_url: data.image_url || "",
-      position: data.position ?? 0,
-      tags: data.tags,
-      colors: data.colors,
-      products: data.products,
-    },
-  });
+    const { taskID } = await client.saveObject({
+      indexName: INDEXES.combinations,
+      body: {
+        objectID,
+        name: data.name,
+        popup_name: data.popup_name || "",
+        description: data.description || "",
+        image_url: data.image_url || "",
+        position: data.position ?? 0,
+        tags: data.tags,
+        colors: data.colors,
+        products: data.products,
+      },
+    });
 
-  await client.waitForTask({ indexName: INDEXES.combinations, taskID });
+    await client.waitForTask({ indexName: INDEXES.combinations, taskID });
 
-  if (formData.get("_modal") === "1") return json({ ok: true });
-  return redirect("/app");
+    if (formData.get("_modal") === "1") return json({ ok: true });
+    return redirect("/app");
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    console.error("[app.combinations.new] action failed:", error);
+    if (formData.get("_modal") === "1") {
+      return json({ ok: false, error: "Failed to create combination — please try again." });
+    }
+    throw error;
+  }
 };
 
 export default function NewCombination() {

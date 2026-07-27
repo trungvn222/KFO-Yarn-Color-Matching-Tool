@@ -52,18 +52,24 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
 
-  const [merinoVariants, ssmVariants] = await Promise.all([
-    fetchVariantsByHandle(admin, MERINO_PRODUCT_HANDLE),
-    fetchVariantsByHandle(admin, SSM_PRODUCT_HANDLE),
-  ]);
+  try {
+    const [merinoVariants, ssmVariants] = await Promise.all([
+      fetchVariantsByHandle(admin, MERINO_PRODUCT_HANDLE),
+      fetchVariantsByHandle(admin, SSM_PRODUCT_HANDLE),
+    ]);
 
-  return json({
-    ok: true,
-    merinoCount: merinoVariants.length,
-    ssmCount: ssmVariants.length,
-    merino: merinoVariants,
-    ssm: ssmVariants,
-  });
+    return json({
+      ok: true,
+      merinoCount: merinoVariants.length,
+      ssmCount: ssmVariants.length,
+      merino: merinoVariants,
+      ssm: ssmVariants,
+    });
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    console.error("[app.sync] action failed:", error);
+    return json({ ok: false, error: "Sync failed — please try again." });
+  }
 };
 
 export default function SyncPage() {
@@ -93,13 +99,21 @@ export default function SyncPage() {
           </Card>
         </Layout.Section>
 
-        {actionData?.ok && (
+        {actionData && "merinoCount" in actionData && (
           <Layout.Section>
             <Banner tone="success" title="Sync complete">
               <p>
                 Fetched {actionData.merinoCount} Merino variants and{" "}
                 {actionData.ssmCount} Soft Silk Mohair variants.
               </p>
+            </Banner>
+          </Layout.Section>
+        )}
+
+        {actionData && "error" in actionData && (
+          <Layout.Section>
+            <Banner tone="critical" title="Sync failed">
+              <p>{actionData.error}</p>
             </Banner>
           </Layout.Section>
         )}

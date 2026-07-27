@@ -14,8 +14,17 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   if (!config) throw redirect("/app/settings?required=1");
   const client = await getMerchantAlgoliaClient(session.shop);
 
-  const [combination, colorsRes, tagsRes] = await Promise.all([
-    client.getObject<KfoCombination>({ indexName: INDEXES.combinations, objectID: params.id! }),
+  let combination: KfoCombination;
+  try {
+    combination = await client.getObject<KfoCombination>({ indexName: INDEXES.combinations, objectID: params.id! });
+  } catch (error: any) {
+    if (error?.status === 404) {
+      throw redirect("/app?notice=combination_not_found");
+    }
+    throw error;
+  }
+
+  const [colorsRes, tagsRes] = await Promise.all([
     client.searchSingleIndex<KfoColor>({ indexName: INDEXES.colors, searchParams: { query: "", hitsPerPage: 1000 } }),
     client.searchSingleIndex<KfoTag>({ indexName: INDEXES.tags, searchParams: { query: "", hitsPerPage: 1000 } }),
   ]);
@@ -60,28 +69,36 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 export const action = async ({ request, params }: ActionFunctionArgs) => {
   const { session, redirect } = await authenticate.admin(request);
   const formData = await request.formData();
-  const raw = formData.get("data") as string;
-  const data = JSON.parse(raw);
-  const client = await getMerchantAlgoliaClient(session.shop);
+  try {
+    const raw = formData.get("data") as string;
+    const data = JSON.parse(raw);
+    const client = await getMerchantAlgoliaClient(session.shop);
 
+    const body = {
+      objectID: params.id!,
+      name: data.name,
+      popup_name: data.popup_name || "",
+      description: data.description || "",
+      image_url: data.image_url || "",
+      position: data.position ?? 0,
+      tags: data.tags,
+      colors: data.colors,
+      products: data.products,
+    };
 
-  const body = {
-    objectID: params.id!,
-    name: data.name,
-    popup_name: data.popup_name || "",
-    description: data.description || "",
-    image_url: data.image_url || "",
-    position: data.position ?? 0,
-    tags: data.tags,
-    colors: data.colors,
-    products: data.products,
-  };
+    const { taskID } = await client.saveObject({ indexName: INDEXES.combinations, body });
+    await client.waitForTask({ indexName: INDEXES.combinations, taskID });
 
-  const { taskID } = await client.saveObject({ indexName: INDEXES.combinations, body });
-  await client.waitForTask({ indexName: INDEXES.combinations, taskID });
-
-  if (formData.get("_modal") === "1") return json({ ok: true, combination: body });
-  return redirect("/app");
+    if (formData.get("_modal") === "1") return json({ ok: true, combination: body });
+    return redirect("/app");
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    console.error("[app.combinations.$id.edit] action failed:", error);
+    if (formData.get("_modal") === "1") {
+      return json({ ok: false, error: "Failed to save combination — please try again.", objectID: params.id });
+    }
+    throw error;
+  }
 };
 
 export default function EditCombination() {
