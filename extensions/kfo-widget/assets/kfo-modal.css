@@ -378,6 +378,10 @@
     opacity: 1;
     background: transparent;
   }
+  .kfo-modal-img-btn {
+    width: 44px;
+    height: 44px;
+  }
   .kfo-skel-left {
     flex: none;
     height: auto;
@@ -411,7 +415,6 @@
   }
   .kfo-modal-fav-btn {
     font-size: 16px;
-    display: none;
   }
   .kfo-modal-fav-icon {
     width: 26px;
@@ -475,8 +478,8 @@
   .kfo-modal-left {
     flex: none;
     height: auto;
-    /* Same width as a single product tile below (grid: 2 cols, 10px gap) */
-    width: calc((100% - 10px) / 2);
+    /* Figma node 3100:6495 (Mobile): fixed 280x280 image */
+    width: 280px;
     aspect-ratio: 1;
     background: #f3f3f2;
   }
@@ -484,11 +487,16 @@
   .kfo-modal-img-actions {
     opacity: 1;
     background: transparent;
+    gap: 32px;
+  }
+  .kfo-modal-img-btn {
+    width: 44px;
+    height: 44px;
   }
   .kfo-skel-left {
     flex: none;
     height: auto;
-    width: calc((100% - 10px) / 2);
+    width: 280px;
     aspect-ratio: 1;
   }
   .kfo-modal-right {
@@ -698,7 +706,7 @@
     height: 35px;
   }
   .kfo-modal-img-btn {
-    width: 35px;
-    height: 35px;
+    width: 44px;
+    height: 44px;
   }
 }
