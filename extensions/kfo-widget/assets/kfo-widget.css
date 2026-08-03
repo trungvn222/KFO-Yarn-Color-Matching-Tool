@@ -832,6 +832,11 @@
     font-weight: 400;
     letter-spacing: 0;
   }
+  .kfo-show-less-inner {
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
   /* Card internal spacing: image->name 8px, name->button 16px, no horizontal inset */
   .kfo-card-body {
     padding: 8px 0 0;
@@ -1023,6 +1028,16 @@
     width: 21px;
     height: 21px;
   }
+  .kfo-show-less-inner {
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+  .kfo-show-less-inner svg {
+    width: 21px;
+    height: 21px;
+  }
 }
 
 /* Tablet/small desktop spec (769-1024, node 4221-6683 "YMT_Tablet_1024") */
@@ -1103,6 +1118,16 @@
     letter-spacing: 0;
   }
   .kfo-show-all-overlay svg {
+    width: 21px;
+    height: 21px;
+  }
+  .kfo-show-less-inner {
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+  .kfo-show-less-inner svg {
     width: 21px;
     height: 21px;
   }
