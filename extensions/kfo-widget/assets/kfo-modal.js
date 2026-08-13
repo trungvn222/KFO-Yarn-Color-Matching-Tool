@@ -158,22 +158,35 @@
           </button>
           ${combo.description ? `<div class="kfo-modal-desc">${combo.description}</div>` : ""}
           <p class="kfo-cart-msg"></p>
-          <div class="kfo-modal-products-grid">
-            ${products
-              .map(
-                (p) => `
-              <div class="kfo-modal-product">
-                ${
-                  p.image_url
-                    ? `<img src="${p.image_url}" alt="${p.product_name}" class="kfo-modal-product-img" />`
-                    : '<div class="kfo-modal-product-img kfo-modal-product-img--placeholder"></div>'
-                }
-                <button class="kfo-add-to-cart-btn" data-variant-id="${p.variant_id}">ADD TO CART</button>
-              </div>
-            `,
-              )
-              .join("")}
+          ${
+            products.length
+              ? `
+          <div class="kfo-modal-components">
+            <div class="kfo-modal-components-head">
+              <p class="kfo-modal-components-title">Components</p>
+              <div class="kfo-modal-components-divider"></div>
+            </div>
+            <div class="kfo-modal-products-grid">
+              ${products
+                .map(
+                  (p) => `
+                <div class="kfo-modal-product">
+                  ${
+                    p.image_url
+                      ? `<img src="${p.image_url}" alt="${p.product_name}" class="kfo-modal-product-img" />`
+                      : '<div class="kfo-modal-product-img kfo-modal-product-img--placeholder"></div>'
+                  }
+                  <p class="kfo-modal-product-name">${p.product_name}</p>
+                  <button class="kfo-add-to-cart-btn" data-variant-id="${p.variant_id}">ADD TO CART</button>
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
           </div>
+          `
+              : ""
+          }
         </div>
       `;
 

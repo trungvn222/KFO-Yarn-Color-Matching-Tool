@@ -167,42 +167,69 @@
   margin: 0 0 20px;
 }
 
-/* Product grid */
+/* Components (product list). Row layout (swatch/name/button) driven by named
+   CSS grid areas per breakpoint below — "img" spans both rows on mobile so
+   the swatch sits beside a stacked name+button column, and sits in a single
+   row beside name+button on tablet/desktop (see each @media block). */
+.kfo-modal-components {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.kfo-modal-components-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kfo-modal-components-title {
+  margin: 0;
+  font-family: "Roboto", sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.2;
+  color: #6a6a6a;
+}
+.kfo-modal-components-divider {
+  height: 1px;
+  background: #6a6a6a;
+  opacity: 0.5;
+}
 .kfo-modal-products-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 .kfo-modal-product {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  align-items: center;
 }
 .kfo-modal-product-img {
-  width: 100%;
-  aspect-ratio: 1;
+  grid-area: img;
   object-fit: cover;
   display: block;
   background: #f3f4f6;
 }
 .kfo-modal-product-img--placeholder {
-  width: 100%;
-  aspect-ratio: 1;
+  grid-area: img;
   background: #e5e7eb;
 }
+.kfo-modal-product-name {
+  grid-area: name;
+  margin: 0;
+  font-family: "Raleway", sans-serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: #3d3a35;
+}
 .kfo-add-to-cart-btn {
-  width: 100%;
-  height: 44px;
+  grid-area: btn;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   background: none;
   border: 1px solid #3d3a35;
-  padding: 0 4px;
   font-family: "Raleway", sans-serif;
-  font-size: 14px;
-  letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
   color: #3d3a35;
@@ -331,23 +358,25 @@
   width: 42%;
 }
 .kfo-skel-products {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   margin-top: 6px;
 }
 .kfo-skel-product {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
 .kfo-skel-product-img {
-  width: 100%;
-  aspect-ratio: 1;
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
   border-radius: 0;
 }
 .kfo-skel-product-btn {
-  height: 36px;
+  flex: 1;
+  height: 44px;
 }
 
 /* Figma tablet spec (481-768, node 4241-4578): fixed 448px centered card */
@@ -428,20 +457,46 @@
     margin: 0;
     line-height: 1.2;
   }
+  /* Figma mobile spec (node 4518-4405), shared with ≤480px below: image
+     spans both rows, name sits above the button in a stacked column. */
+  .kfo-modal-components {
+    gap: 24px;
+  }
   .kfo-modal-products-grid {
-    width: auto;
-    grid-template-columns: repeat(2, 160px);
-    gap: 28px;
-    justify-content: center;
+    width: 100%;
+    gap: 24px;
+  }
+  .kfo-modal-product {
+    grid-template-columns: 78.95px 1fr;
+    grid-template-areas:
+      "img name"
+      "img btn";
+    align-items: start;
+    column-gap: 17px;
+    row-gap: 17px;
+  }
+  .kfo-modal-product-img,
+  .kfo-modal-product-img--placeholder {
+    width: 78.95px;
+    height: 78.95px;
+  }
+  .kfo-modal-product-name {
+    font-size: 12px;
+    line-height: 1.2;
+    /* letter-spacing doesn't support %; 10% of the 12px font-size */
+    letter-spacing: 1.2px;
   }
   .kfo-add-to-cart-btn {
-    font-size: 14px;
+    justify-self: start;
+    height: auto;
+    font-size: 12px;
     font-weight: 400;
+    line-height: 1.5;
     border-color: #3d3a35;
     color: #3d3a35;
-    padding: 0 10px;
-    /* letter-spacing doesn't support %; 15% of the 14px font-size */
-    letter-spacing: 2.1px;
+    padding: 8px 12px;
+    /* letter-spacing doesn't support %; 15% of the 12px font-size */
+    letter-spacing: 1.8px;
   }
   .kfo-add-to-cart-btn:hover {
     background: #3d3a35;
@@ -537,17 +592,45 @@
     text-align: center;
     margin: -10px 0 0;
   }
+  /* Figma mobile spec (node 4518-4405), shared with 481-768px above: image
+     spans both rows, name sits above the button in a stacked column. */
+  .kfo-modal-components {
+    gap: 24px;
+  }
   .kfo-modal-products-grid {
     width: 100%;
-    gap: 10px;
+    gap: 24px;
+  }
+  .kfo-modal-product {
+    grid-template-columns: 78.95px 1fr;
+    grid-template-areas:
+      "img name"
+      "img btn";
+    align-items: start;
+    column-gap: 17px;
+    row-gap: 17px;
+  }
+  .kfo-modal-product-img,
+  .kfo-modal-product-img--placeholder {
+    width: 78.95px;
+    height: 78.95px;
+  }
+  .kfo-modal-product-name {
+    font-size: 12px;
+    line-height: 1.2;
+    /* letter-spacing doesn't support %; 10% of the 12px font-size */
+    letter-spacing: 1.2px;
   }
   .kfo-add-to-cart-btn {
-    font-size: 14px;
+    justify-self: start;
+    height: auto;
+    font-size: 12px;
     font-weight: 400;
-    letter-spacing: 2.1px;
+    line-height: 1.5;
+    letter-spacing: 1.8px;
     border-color: #3d3a35;
     color: #3d3a35;
-    padding: 10px 4px;
+    padding: 8px 12px;
   }
   .kfo-add-to-cart-btn:hover {
     background: #3d3a35;
@@ -618,18 +701,45 @@
     flex-direction: column;
     justify-content: safe center;
   }
-  /* Bigger product cards + 20px more spacing between the two (slide 3 - 3) */
-  .kfo-modal-products-grid {
-    grid-template-columns: repeat(2, 200px);
-    gap: 32px;
+  /* Figma desktop spec (node 4249-4318): swatch/name/button in one row,
+     80px swatch, 14px name, 44px-tall button — shared with 769-1024 below
+     since tablet temporarily mirrors desktop for this section. */
+  .kfo-modal-product {
+    grid-template-columns: 80px 1fr auto;
+    grid-template-areas: "img name btn";
+    column-gap: 8px;
+  }
+  .kfo-modal-product-img,
+  .kfo-modal-product-img--placeholder {
+    width: 80px;
+    height: 80px;
+  }
+  .kfo-modal-product-name {
+    font-size: 14px;
+    line-height: 1.2;
+    /* letter-spacing doesn't support %; 10% of the 14px font-size */
+    letter-spacing: 1.4px;
+  }
+  .kfo-add-to-cart-btn {
+    height: 44px;
+    font-size: 14px;
+    line-height: 23px;
+    padding: 0 24px;
+    /* letter-spacing doesn't support %; 15% of the 14px font-size */
+    letter-spacing: 2.1px;
   }
 }
 
 /* Tablet/small desktop: fluid 50/50 split instead of the fixed 630px image
-   column. NOT yet independently verified against a 769-1024 Figma modal
-   frame (node 4221-8192, blocked by API rate-limit as of this pass) — the
-   non-fluid-specific values below (title/desc size, main-img, products-grid
-   gap) are carried over unchanged from the old shared ≥769px rule. */
+   column. 2026-08-13: independently verified against Figma node 4221:8192
+   (previously blocked by API rate-limit) — title 20px, desc 14px, and the
+   420x420 main image below all match this frame exactly, confirming they're
+   correct as-is (not just carried over unverified). Note: that frame's own
+   product-list section is the OLD pre-redesign Components layout (128px
+   square swatch + button, no name label) — it predates the new Components
+   row design from nodes 4249:4318 (desktop) / 4518:4405 (mobile), so it is
+   NOT used for `.kfo-modal-product*` below; those intentionally mirror the
+   desktop spec per an explicit user decision instead. */
 @media (min-width: 769px) and (max-width: 1024px) {
   .kfo-modal-left {
     flex: 0 0 50%;
@@ -640,16 +750,15 @@
     align-items: center;
     justify-content: center;
   }
-  /* Interpolated from a live-screenshot reference (image/product/desc sizes
-     scaled between the confirmed 481-768 and wide-desktop values) — user
-     will fine-tune exact px later. */
+  /* Figma-confirmed (node 4221:8192): 420x420 */
   .kfo-modal-main-img,
   .kfo-modal-main-img--placeholder {
     width: 420px;
     height: 420px;
     flex-shrink: 0;
   }
-  /* Figma-confirmed for this breakpoint: 20px, not 28px */
+  /* Figma-confirmed (node 4221:8192): 20px, not 28px — same size as mobile
+     by design, this breakpoint doesn't scale up until ≥1025px. */
   .kfo-modal-title {
     font-family: "Raleway", sans-serif;
     font-size: 20px;
@@ -673,15 +782,40 @@
     flex-direction: column;
     justify-content: safe center;
   }
-  .kfo-modal-products-grid {
-    grid-template-columns: repeat(2, 140px);
-    gap: 20px;
+  /* Components row (image/name/button): 2026-08-13, revised after the
+     stacked (mobile-style) version below was tried and the user said it
+     still read as "mobile" — they want the inline desktop row structure
+     kept (img|name|btn on one line) even at this narrow breakpoint. The
+     fluid 50/50 split leaves only ~320-360px of content width here (vs.
+     desktop's fixed ~570px), so to avoid squeezing the name column down to
+     an unreadable ~76px, only the BUTTON shrinks to a mobile-sized compact
+     button (12px font, 8px/12px padding) at this breakpoint specifically —
+     the name stays at desktop's 14px. This is a breakpoint-specific
+     compromise, not a copy of either the mobile or desktop button spec. */
+  .kfo-modal-product {
+    grid-template-columns: 80px 1fr auto;
+    grid-template-areas: "img name btn";
+    column-gap: 8px;
+  }
+  .kfo-modal-product-img,
+  .kfo-modal-product-img--placeholder {
+    width: 80px;
+    height: 80px;
+  }
+  .kfo-modal-product-name {
+    font-family: "Raleway", sans-serif;
+    font-size: 14px;
+    line-height: 1.2;
+    /* letter-spacing doesn't support %; 10% of the 14px font-size */
+    letter-spacing: 1.4px;
   }
   .kfo-add-to-cart-btn {
+    height: auto;
     font-family: "Raleway", sans-serif;
     font-weight: 400;
     font-size: 12px;
-    line-height: 18.36px;
+    line-height: 1.5;
+    padding: 8px 12px;
     /* letter-spacing doesn't support %; 15% of the 12px font-size */
     letter-spacing: 1.8px;
     text-align: center;
@@ -691,6 +825,9 @@
     top: 20px;
     right: 20px;
   }
+  /* Figma-confirmed (node 4221:8192, "ADDED TO FAVORITE!" text): 16px, not
+     20px — same size as mobile by design, same reasoning as .kfo-modal-title
+     above. */
   .kfo-modal-fav-btn {
     font-family: "Roboto", sans-serif;
     font-weight: 400;
