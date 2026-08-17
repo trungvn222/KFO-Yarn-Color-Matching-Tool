@@ -194,7 +194,13 @@
         ? tagsIndex.search("", { hitsPerPage: 1000 })
         : Promise.resolve({ hits: [] }),
     ]);
-    allColors = colorsRes.hits;
+    // Alphabetical color order — drives both the filter grid and the
+    // section order below (the index itself is not name-ranked).
+    allColors = [...colorsRes.hits].sort((a, b) =>
+      (a.name || "").localeCompare(b.name || "", undefined, {
+        sensitivity: "base",
+      }),
+    );
     allTags = tagsRes.hits;
 
     // --- Render shell ---
@@ -575,8 +581,11 @@
       if (selectedTags.length)
         facetFilters.push(selectedTags.map((s) => `tags:${s}`));
 
+      // Fetch the whole section, then sort and slice client-side so the
+      // visible subset is the alphabetically-first N (the index ranks by
+      // position, so a server-side page would pick the wrong subset).
       const res = await combIndex.search(query, {
-        hitsPerPage: sectionPerPage[colorId],
+        hitsPerPage: 1000,
         facetFilters,
       });
 
@@ -588,10 +597,17 @@
       // Has combinations → reveal the section now.
       sectionEl.classList.add("kfo-section--visible");
 
-      const remaining = res.nbHits - res.hits.length;
+      const sortedHits = [...res.hits].sort((a, b) =>
+        (a.name || "").localeCompare(b.name || "", undefined, {
+          sensitivity: "base",
+        }),
+      );
+      const hits = sortedHits.slice(0, sectionPerPage[colorId]);
+
+      const remaining = res.nbHits - hits.length;
       // If more results exist: show first N-1 cards + "Show all" overlay on the Nth slot
-      const visibleHits = remaining > 0 ? res.hits.slice(0, -1) : res.hits;
-      const showAllHit = remaining > 0 ? res.hits[res.hits.length - 1] : null;
+      const visibleHits = remaining > 0 ? hits.slice(0, -1) : hits;
+      const showAllHit = remaining > 0 ? hits[hits.length - 1] : null;
       // Fully expanded beyond the first page → offer a "Show less" tile to collapse.
       const showLess = remaining === 0 && res.nbHits > INITIAL;
 

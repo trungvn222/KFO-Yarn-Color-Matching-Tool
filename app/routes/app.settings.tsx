@@ -47,7 +47,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       indexSettings: {
         searchableAttributes: ["name", "description"],
         attributesForFaceting: ["tags", "colors"],
-        customRanking: ["asc(position)"],
+        customRanking: ["asc(name)"],
+      },
+    });
+    await client.setSettings({
+      indexName: INDEXES.colors,
+      indexSettings: {
+        customRanking: ["asc(name)"],
       },
     });
 

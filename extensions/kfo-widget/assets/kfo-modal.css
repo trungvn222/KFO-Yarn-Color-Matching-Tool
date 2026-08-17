@@ -379,26 +379,30 @@
   height: 44px;
 }
 
-/* Figma tablet spec (481-768, node 4241-4578): fixed 448px centered card */
+/* Figma tablet spec (481-768, node 4621-4347): 522px card, 60px padding,
+   full-width square image (402px at the full card), left-aligned content.
+   Measured from the 2x design export; pending re-check against the Figma
+   API once its rate limit clears. */
 @media (min-width: 481px) and (max-width: 768px) {
   .kfo-modal {
     flex-direction: column;
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
-    max-width: 448px;
+    max-width: 522px;
     background: #f3f3f3;
-    padding: 50px 50px 20px;
+    padding: 60px;
   }
   .kfo-modal-body {
     flex-direction: column;
-    align-items: center;
-    gap: 20px;
+    align-items: stretch;
+    /* image → title */
+    gap: 24px;
   }
   .kfo-modal-left {
     flex: none;
     height: auto;
-    width: 280px;
+    width: 100%;
     aspect-ratio: 1;
     background: #f3f3f3;
   }
@@ -414,7 +418,7 @@
   .kfo-skel-left {
     flex: none;
     height: auto;
-    width: 280px;
+    width: 100%;
     aspect-ratio: 1;
   }
   .kfo-modal-right {
@@ -424,41 +428,48 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 20px;
+    align-items: stretch;
+    gap: 0;
   }
   .kfo-modal-close {
     position: absolute;
-    top: 13px;
-    right: 20px;
+    top: 24px;
+    right: 24px;
   }
   .kfo-modal-title {
     font-family: "Raleway", sans-serif;
     font-size: 20px;
     font-weight: 400;
     letter-spacing: 0;
-    text-align: center;
+    text-align: left;
     color: #3d3a35;
-    margin: 0;
+    margin: 0 0 12px;
+    line-height: 1.2;
+  }
+  .kfo-modal-desc {
+    font-family: "Roboto", sans-serif;
+    font-size: 16px;
+    color: #3d3a35;
+    text-align: left;
+    margin: 0 0 24px;
     line-height: 1.2;
   }
   .kfo-modal-fav-btn {
     font-size: 16px;
+    margin-bottom: 24px;
   }
+  /* The heart SVGs carry ~20-25% built-in padding around the glyph; a 40px
+     box renders the glyph at the design's 22.5x20, and the negative margins
+     collapse the layout box back to the glyph so the 8px gap to the text and
+     the vertical margins measure from the visible heart, not the padding. */
   .kfo-modal-fav-icon {
-    width: 26px;
-    height: 26px;
-  }
-  .kfo-modal-desc {
-    font-family: "Roboto", sans-serif;
-    font-size: 14px;
-    color: #3d3a35;
-    text-align: center;
-    margin: 0;
-    line-height: 1.2;
+    width: 40px;
+    height: 40px;
+    margin: -10px -9px -10px -8px;
   }
   /* Figma mobile spec (node 4518-4405), shared with ≤480px below: image
-     spans both rows, name sits above the button in a stacked column. */
+     spans both rows, name sits above the button in a stacked column. Here
+     the button additionally bottom-aligns with the swatch (space-between). */
   .kfo-modal-components {
     gap: 24px;
   }
@@ -472,8 +483,9 @@
       "img name"
       "img btn";
     align-items: start;
+    align-content: space-between;
     column-gap: 17px;
-    row-gap: 17px;
+    row-gap: 8px;
   }
   .kfo-modal-product-img,
   .kfo-modal-product-img--placeholder {
@@ -488,13 +500,15 @@
   }
   .kfo-add-to-cart-btn {
     justify-self: start;
+    align-self: end;
     height: auto;
     font-size: 12px;
     font-weight: 400;
     line-height: 1.5;
     border-color: #3d3a35;
     color: #3d3a35;
-    padding: 8px 12px;
+    /* 7px vertical hits the design's 34px outer button height */
+    padding: 7px 12px;
     /* letter-spacing doesn't support %; 15% of the 12px font-size */
     letter-spacing: 1.8px;
   }
@@ -505,38 +519,42 @@
   .kfo-cart-msg {
     font-size: 14px;
   }
-  /* Skeleton matches the centered square image */
+  /* Skeleton matches the full-width square image */
   .kfo-modal-skeleton {
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     min-height: auto;
   }
   .kfo-skel-right {
     width: 100%;
-    align-items: center;
+    align-items: stretch;
   }
 }
+/* Figma mobile spec (≤480, node 4609-4548): full-width card, 60px top /
+   16px side / 28px bottom padding, full-width square image, left-aligned
+   content — same family as the 481-768 spec. Measured from the node's 2x
+   API render. */
 @media (max-width: 480px) {
   .kfo-modal {
     flex-direction: column;
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
-    background: #f3f3f2;
-    padding: 48px 16px 20px;
+    background: #f3f3f3;
+    padding: 60px 16px 28px;
   }
   .kfo-modal-body {
     flex-direction: column;
-    align-items: center;
-    gap: 20px;
+    align-items: stretch;
+    /* image → title */
+    gap: 24px;
   }
   .kfo-modal-left {
     flex: none;
     height: auto;
-    /* Figma node 3100:6495 (Mobile): fixed 280x280 image */
-    width: 280px;
+    width: 100%;
     aspect-ratio: 1;
-    background: #f3f3f2;
+    background: #f3f3f3;
   }
   /* Heart + zoom always visible on touch (no hover on mobile) */
   .kfo-modal-img-actions {
@@ -551,7 +569,7 @@
   .kfo-skel-left {
     flex: none;
     height: auto;
-    width: 280px;
+    width: 100%;
     aspect-ratio: 1;
   }
   .kfo-modal-right {
@@ -561,39 +579,48 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 16px;
+    align-items: stretch;
+    gap: 0;
   }
   .kfo-modal-close {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: 18px;
+    right: 17px;
+    width: 15px;
+    height: 15px;
   }
   .kfo-modal-title {
     font-family: "Raleway", sans-serif;
     font-size: 20px;
     font-weight: 400;
     letter-spacing: 0;
-    text-align: center;
+    text-align: left;
     color: #3d3a35;
-    margin: 0;
-  }
-  .kfo-modal-fav-btn {
-    font-size: 16px;
-  }
-  .kfo-modal-fav-icon {
-    width: 26px;
-    height: 26px;
+    margin: 0 0 12px;
+    line-height: 1.2;
   }
   .kfo-modal-desc {
     font-family: "Roboto", sans-serif;
-    font-size: 14px;
+    font-size: 16px;
     color: #3d3a35;
-    text-align: center;
-    margin: -10px 0 0;
+    text-align: left;
+    margin: 0 0 24px;
+    line-height: 1.2;
   }
-  /* Figma mobile spec (node 4518-4405), shared with 481-768px above: image
-     spans both rows, name sits above the button in a stacked column. */
+  .kfo-modal-fav-btn {
+    font-size: 18px;
+    margin-bottom: 24px;
+  }
+  /* 40px box + negative margins render the heart glyph at 22.5x20 (the
+     SVGs carry built-in padding), same as the other breakpoints */
+  .kfo-modal-fav-icon {
+    width: 40px;
+    height: 40px;
+    margin: -10px -9px -10px -8px;
+  }
+  /* Image spans both rows, name above the button in a stacked column, and
+     the button bottom-aligns with the swatch (space-between) — same
+     structure as 481-768. */
   .kfo-modal-components {
     gap: 24px;
   }
@@ -607,8 +634,9 @@
       "img name"
       "img btn";
     align-items: start;
+    align-content: space-between;
     column-gap: 17px;
-    row-gap: 17px;
+    row-gap: 8px;
   }
   .kfo-modal-product-img,
   .kfo-modal-product-img--placeholder {
@@ -623,6 +651,7 @@
   }
   .kfo-add-to-cart-btn {
     justify-self: start;
+    align-self: end;
     height: auto;
     font-size: 12px;
     font-weight: 400;
@@ -630,7 +659,8 @@
     letter-spacing: 1.8px;
     border-color: #3d3a35;
     color: #3d3a35;
-    padding: 8px 12px;
+    /* 7px vertical hits the design's 34px outer button height */
+    padding: 7px 12px;
   }
   .kfo-add-to-cart-btn:hover {
     background: #3d3a35;
@@ -639,67 +669,94 @@
   .kfo-cart-msg {
     font-size: 14px;
   }
-  /* Skeleton matches the centered square image */
+  /* Skeleton matches the full-width square image */
   .kfo-modal-skeleton {
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     min-height: auto;
   }
   .kfo-skel-right {
     width: 100%;
-    align-items: center;
+    align-items: stretch;
   }
 }
 
-/* Wide desktop only (≥1025px). 769-1024 has its own block below. */
+/* Wide desktop only (≥1025px), Figma node 4609-4506 (2026-08-17): 1136x582
+   white card, 448px image at 70/67 padding, content column starts 60px right
+   of the image and top-aligns with the image's top edge. Measured from the
+   node's 2x API render. */
 @media (min-width: 1025px) {
-  /* Popup: size 820x419 -> 1200x630; image 369x419 -> 550x550 */
   .kfo-modal {
-    max-width: 1200px;
-    height: 630px;
+    max-width: 1136px;
+    height: 582px;
+    background: #fff;
   }
   .kfo-modal-left {
-    flex: 0 0 630px;
+    /* 70px left padding + 448px image at the full 1136 card (518/1136) */
+    flex: 0 0 min(518px, 45.6%);
     box-sizing: border-box;
-    padding: 40px;
+    padding: 67px 0 67px 70px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: #fff;
   }
   .kfo-modal-main-img,
   .kfo-modal-main-img--placeholder {
-    width: 550px;
-    height: 550px;
+    width: 100%;
+    max-width: 448px;
+    height: auto;
+    aspect-ratio: 1;
     flex-shrink: 0;
   }
 
-  /* 4- Restyle modal title: Roboto->Raleway, 18->28px, 600->400, lh 1.4->1.2 */
+  /* Same wide-tracked display title as the 769-1024 spec */
   .kfo-modal-title {
     font-family: "Raleway", sans-serif;
-    font-size: 28px;
+    font-size: 25px;
     font-weight: 400;
     line-height: 1.2;
-    /* Spacing between title and content below */
-    margin-bottom: 30px;
-  }
-  /* Content (description) font size + spacing to products grid */
-  .kfo-modal-desc {
-    font-size: 18px;
+    letter-spacing: 5.5px;
     margin-bottom: 40px;
   }
+  .kfo-modal-desc {
+    font-size: 16px;
+    line-height: 1.2;
+    margin-bottom: 40px;
+  }
+  .kfo-modal-fav-btn {
+    font-size: 18px;
+    margin-bottom: 0;
+  }
+  /* Components pinned to the bottom of the column; the flexible gap above
+     it produces the design's large break after the fav button */
+  .kfo-modal-components {
+    margin-top: auto;
+  }
+  /* Heart SVGs carry built-in padding — 40px box + negative margins render
+     the glyph at the design's 22.5x20 with a true 8px gap to the text. */
   .kfo-modal-fav-icon {
     width: 40px;
     height: 40px;
+    margin: -10px -9px -10px -8px;
   }
   .kfo-modal-img-btn {
     width: 40px;
     height: 40px;
   }
-  /* Right content box vertically centered against the image (slide 3 - 4) */
+  .kfo-modal-close {
+    width: 28px;
+    height: 28px;
+    top: 25px;
+    right: 31px;
+  }
+  /* Content top-aligned with the image's top edge (67px), 60px gap to the
+     image, 71px right padding per the frame */
   .kfo-modal-right {
     display: flex;
     flex-direction: column;
-    justify-content: safe center;
+    justify-content: flex-start;
+    padding: 67px 70px 67px 60px;
   }
   /* Figma desktop spec (node 4249-4318): swatch/name/button in one row,
      80px swatch, 14px name, 44px-tall button — shared with 769-1024 below
@@ -730,68 +787,66 @@
   }
 }
 
-/* Tablet/small desktop: fluid 50/50 split instead of the fixed 630px image
-   column. 2026-08-13: independently verified against Figma node 4221:8192
-   (previously blocked by API rate-limit) — title 20px, desc 14px, and the
-   420x420 main image below all match this frame exactly, confirming they're
-   correct as-is (not just carried over unverified). Note: that frame's own
-   product-list section is the OLD pre-redesign Components layout (128px
-   square swatch + button, no name label) — it predates the new Components
-   row design from nodes 4249:4318 (desktop) / 4518:4405 (mobile), so it is
-   NOT used for `.kfo-modal-product*` below; those intentionally mirror the
-   desktop spec per an explicit user decision instead. */
+/* Tablet/small desktop, Figma node 4609-4326 (2026-08-17, supersedes the
+   old 4221:8192-based 50/50 split): 958px white card, 396px image with 28px
+   padding, content column vertically centered with the full desktop-style
+   Components row (80px swatch, 14px name, 44px button). Measured from the
+   node's own 2x API render (JSON endpoint was rate-limited); the image
+   column scales down proportionally below 1024px so the inline row keeps
+   room at 769px. */
 @media (min-width: 769px) and (max-width: 1024px) {
+  .kfo-modal {
+    max-width: 958px;
+    background: #fff;
+  }
   .kfo-modal-left {
-    flex: 0 0 50%;
-    max-width: 50%;
+    /* 28px padding + 396px image at the full 958 card (424/958 = 44.3%) */
+    flex: 0 0 min(452px, 47.2%);
+    max-width: none;
     box-sizing: border-box;
-    padding: 20px;
+    padding: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: #fff;
   }
-  /* Figma-confirmed (node 4221:8192): 420x420 */
   .kfo-modal-main-img,
   .kfo-modal-main-img--placeholder {
-    width: 420px;
-    height: 420px;
+    width: 100%;
+    max-width: 396px;
+    height: auto;
+    aspect-ratio: 1;
     flex-shrink: 0;
-  }
-  /* Figma-confirmed (node 4221:8192): 20px, not 28px — same size as mobile
-     by design, this breakpoint doesn't scale up until ≥1025px. */
-  .kfo-modal-title {
-    font-family: "Raleway", sans-serif;
-    font-size: 20px;
-    font-weight: 400;
-    line-height: 1.2;
-    letter-spacing: 0;
-    color: #3d3a35;
-    margin-bottom: 10px;
-  }
-  .kfo-modal-desc {
-    font-family: "Roboto", sans-serif;
-    font-weight: 400;
-    font-size: 14px;
-    line-height: 1.2;
-    letter-spacing: 0;
-    color: #3d3a35;
-    margin-bottom: 20px;
   }
   .kfo-modal-right {
     display: flex;
     flex-direction: column;
     justify-content: safe center;
+    padding: 28px 24px 28px 0;
   }
-  /* Components row (image/name/button): 2026-08-13, revised after the
-     stacked (mobile-style) version below was tried and the user said it
-     still read as "mobile" — they want the inline desktop row structure
-     kept (img|name|btn on one line) even at this narrow breakpoint. The
-     fluid 50/50 split leaves only ~320-360px of content width here (vs.
-     desktop's fixed ~570px), so to avoid squeezing the name column down to
-     an unreadable ~76px, only the BUTTON shrinks to a mobile-sized compact
-     button (12px font, 8px/12px padding) at this breakpoint specifically —
-     the name stays at desktop's 14px. This is a breakpoint-specific
-     compromise, not a copy of either the mobile or desktop button spec. */
+  /* Components pinned to the bottom of the column, same as ≥1025 */
+  .kfo-modal-components {
+    margin-top: auto;
+  }
+  .kfo-modal-title {
+    font-family: "Raleway", sans-serif;
+    font-size: 25px;
+    font-weight: 400;
+    line-height: 1.2;
+    /* wide-tracked display title per the design (~0.22em) */
+    letter-spacing: 5.5px;
+    color: #3d3a35;
+    margin: 0 0 20px;
+  }
+  .kfo-modal-desc {
+    font-family: "Roboto", sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.2;
+    letter-spacing: 0;
+    color: #3d3a35;
+    margin: 0 0 20px;
+  }
   .kfo-modal-product {
     grid-template-columns: 80px 1fr auto;
     grid-template-areas: "img name btn";
@@ -809,38 +864,37 @@
     /* letter-spacing doesn't support %; 10% of the 14px font-size */
     letter-spacing: 1.4px;
   }
+  /* Full desktop button (node 4609-4326 drops the old compact variant) */
   .kfo-add-to-cart-btn {
-    height: auto;
+    height: 44px;
     font-family: "Raleway", sans-serif;
     font-weight: 400;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.5;
-    padding: 8px 12px;
-    /* letter-spacing doesn't support %; 15% of the 12px font-size */
-    letter-spacing: 1.8px;
+    padding: 14px 16px;
+    /* letter-spacing doesn't support %; 15% of the 14px font-size */
+    letter-spacing: 2.1px;
     text-align: center;
     text-transform: uppercase;
   }
   .kfo-modal-close {
-    top: 20px;
-    right: 20px;
+    top: 22px;
+    right: 22px;
   }
-  /* Figma-confirmed (node 4221:8192, "ADDED TO FAVORITE!" text): 16px, not
-     20px — same size as mobile by design, same reasoning as .kfo-modal-title
-     above. */
   .kfo-modal-fav-btn {
     font-family: "Roboto", sans-serif;
     font-weight: 400;
     font-size: 16px;
     line-height: 1.2;
     letter-spacing: 0;
-    margin-bottom: 10px;
+    margin-bottom: 24px;
   }
-  /* Match .kfo-heart-btn size at this breakpoint (35px) instead of the
-     fixed 44px used everywhere else */
+  /* Same 40px-box + negative-margin trick as 481-768: the heart SVGs carry
+     built-in padding, this renders the glyph at the design's 22.5x20. */
   .kfo-modal-fav-icon {
-    width: 35px;
-    height: 35px;
+    width: 40px;
+    height: 40px;
+    margin: -10px -9px -10px -8px;
   }
   .kfo-modal-img-btn {
     width: 44px;

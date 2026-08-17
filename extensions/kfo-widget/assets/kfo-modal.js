@@ -151,12 +151,12 @@
         </div>
         <div class="kfo-modal-right">
           <button class="kfo-modal-close" type="button"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M1.77 31.54L0 29.77L14 15.77L0 1.77L1.77 0L15.77 14L29.77 0L31.54 1.77L17.54 15.77L31.54 29.77L29.77 31.54L15.77 17.54L1.77 31.54Z" fill="#3D3A35"/></svg></button>
-          <h2 class="kfo-modal-title">${(combo.popup_name || combo.name).toUpperCase()}</h2>
+          <h2 class="kfo-modal-title">COMBINATION DETAILS</h2>
+          ${combo.description ? `<div class="kfo-modal-desc">${combo.description}</div>` : ""}
           <button class="kfo-modal-fav-btn ${favActive ? "active" : ""}" data-action="fav-text">
             <span class="kfo-modal-fav-icon">${favHeartSvg(favActive)}</span>
             ${favActive ? "ADDED TO FAVORITE" : "ADD TO FAVORITE"}
           </button>
-          ${combo.description ? `<div class="kfo-modal-desc">${combo.description}</div>` : ""}
           <p class="kfo-cart-msg"></p>
           ${
             products.length
