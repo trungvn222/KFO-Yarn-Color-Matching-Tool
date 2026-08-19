@@ -3,6 +3,45 @@
 
   const FAV_KEY = 'kfo_product_favorites';
 
+  // Danish UI strings for the .dk storefront (keyed by the English text, so
+  // English is the automatic fallback everywhere else).
+  const KFO_DA = {
+    'No favorited items or pairings for now': 'Ingen favoritter',
+    'EXPLORE OUR WEBSITE': 'UDFORSK VORES HJEMMESIDE',
+    'Prev': 'Forrige',
+    'Next': 'Næste',
+    'ADD TO CART': 'LÆG I KURVEN',
+    'ADDED ✓': 'TILFØJET ✓',
+    'Remove from favorites': 'Fjern fra favoritter',
+    'Add to favorites': 'Tilføj til favoritter',
+    'From': 'Fra',
+    ' — Sold out': ' — Udsolgt',
+    'Unavailable': 'Ikke tilgængelig',
+    'No favorite products found.': 'Ingen favoritprodukter fundet.',
+  };
+  const kfoT = (s) => {
+    let lang = '';
+    try {
+      lang = String(window.KFO_LANG || '').toLowerCase();
+      if (lang !== 'da' && lang !== 'en') {
+        const detected = String(
+          (window.Shopify && window.Shopify.locale) ||
+            document.documentElement.lang ||
+            '',
+        ).toLowerCase();
+        lang =
+          detected.indexOf('da') === 0 ||
+          location.hostname.indexOf('knittingforolive.dk') !== -1
+            ? 'da'
+            : 'en';
+      }
+    } catch (e) {
+      lang = 'en';
+    }
+    return (lang === 'da' && KFO_DA[s]) || s;
+  };
+  const EMPTY_HTML = `<div class="kfo-empty"><p class="kfo-empty-text">${kfoT('No favorited items or pairings for now')}</p><a class="kfo-empty-btn" href="/">${kfoT('EXPLORE OUR WEBSITE')}</a></div>`;
+
   function getFavs() { try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch { return []; } }
   function isFav(handle) { return getFavs().includes(handle); }
   function toggleFav(handle) {
@@ -26,7 +65,7 @@
 
     const btn = document.createElement('button');
     btn.className = 'kfo-product-fav-btn' + (isFav(handle) ? ' active' : '');
-    btn.setAttribute('aria-label', isFav(handle) ? 'Remove from favorites' : 'Add to favorites');
+    btn.setAttribute('aria-label', isFav(handle) ? kfoT('Remove from favorites') : kfoT('Add to favorites'));
     btn.innerHTML = `<img src="${isFav(handle) ? heartActiveUrl : heartUrl}" class="kfo-product-fav-icon" alt="" />`;
     root.appendChild(btn);
 
@@ -35,7 +74,7 @@
       const active = isFav(handle);
       btn.classList.toggle('active', active);
       btn.querySelector('.kfo-product-fav-icon').src = active ? heartActiveUrl : heartUrl;
-      btn.setAttribute('aria-label', active ? 'Remove from favorites' : 'Add to favorites');
+      btn.setAttribute('aria-label', active ? kfoT('Remove from favorites') : kfoT('Add to favorites'));
     });
 
     window.addEventListener('kfo:product-favorites-changed', () => {
@@ -73,7 +112,7 @@
       const handles = getFavs();
 
       if (!handles.length) {
-        grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
+        grid.innerHTML = EMPTY_HTML;
         document.getElementById('kfo-pfav-pagination').innerHTML = '';
         return;
       }
@@ -95,7 +134,7 @@
       const products = results.filter(Boolean);
 
       if (!products.length) {
-        grid.innerHTML = '<p class="kfo-empty">No favorite products found.</p>';
+        grid.innerHTML = `<p class="kfo-empty">${kfoT('No favorite products found.')}</p>`;
         document.getElementById('kfo-pfav-pagination').innerHTML = '';
         return;
       }
@@ -109,9 +148,9 @@
       const el = document.getElementById('kfo-pfav-pagination');
       if (nbPages <= 1) { el.innerHTML = ''; return; }
       el.innerHTML = `
-        <button class="kfo-page-btn" id="kfo-pfav-prev" ${page === 1 ? 'disabled' : ''}>&#8592; Prev</button>
+        <button class="kfo-page-btn" id="kfo-pfav-prev" ${page === 1 ? 'disabled' : ''}>&#8592; ${kfoT('Prev')}</button>
         <span class="kfo-page-label">${page} / ${nbPages}</span>
-        <button class="kfo-page-btn" id="kfo-pfav-next" ${page >= nbPages ? 'disabled' : ''}>Next &#8594;</button>
+        <button class="kfo-page-btn" id="kfo-pfav-next" ${page >= nbPages ? 'disabled' : ''}>${kfoT('Next')} &#8594;</button>
       `;
       el.querySelector('#kfo-pfav-prev')?.addEventListener('click', () => { page--; renderGallery(); window.scrollTo({ top: root.offsetTop - 20, behavior: 'smooth' }); });
       el.querySelector('#kfo-pfav-next')?.addEventListener('click', () => { page++; renderGallery(); window.scrollTo({ top: root.offsetTop - 20, behavior: 'smooth' }); });
@@ -134,7 +173,7 @@
             card.remove();
             const grid = document.getElementById('kfo-pfav-grid');
             if (grid && !grid.querySelector('.kfo-pfav-card')) {
-              grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
+              grid.innerHTML = EMPTY_HTML;
             }
           }
         });
@@ -168,16 +207,16 @@
               body: JSON.stringify({ items: [{ id: Number(variantId), quantity: 1 }] }),
             });
             if (!res.ok) throw await res.json().catch(() => ({}));
-            btn.textContent = 'ADDED ✓';
+            btn.textContent = kfoT('ADDED ✓');
             btn.style.background = '#111';
             btn.style.color = '#fff';
             document.dispatchEvent(new CustomEvent('cart:refresh'));
             document.dispatchEvent(new CustomEvent('theme:cart:open'));
-            setTimeout(() => { btn.textContent = 'ADD TO CART'; btn.style.background = ''; btn.style.color = ''; btn.disabled = false; }, 2000);
+            setTimeout(() => { btn.textContent = kfoT('ADD TO CART'); btn.style.background = ''; btn.style.color = ''; btn.disabled = false; }, 2000);
           } catch (err) {
             btn.textContent = 'FAILED';
             btn.style.color = '#e53e3e';
-            setTimeout(() => { btn.textContent = 'ADD TO CART'; btn.style.color = ''; btn.disabled = false; }, 3000);
+            setTimeout(() => { btn.textContent = kfoT('ADD TO CART'); btn.style.color = ''; btn.disabled = false; }, 3000);
           }
         });
 
@@ -203,7 +242,7 @@
     const hasVariantSelector = variants.length > 1 && variants[0]?.title !== 'Default Title';
     const priceMin  = product.price_min ?? firstVariant?.price ?? 0;
     const priceMax  = product.price_max ?? firstVariant?.price ?? 0;
-    const priceLabel = priceMin === priceMax ? formatMoney(priceMin) : `From ${formatMoney(priceMin)}`;
+    const priceLabel = priceMin === priceMax ? formatMoney(priceMin) : `${kfoT('From')} ${formatMoney(priceMin)}`;
 
     return `
       <div class="kfo-card kfo-pfav-card" data-handle="${product.handle}" style="cursor:pointer">
@@ -212,7 +251,7 @@
             ? `<img src="${img}" alt="${product.title}" loading="lazy" />`
             : '<div class="kfo-card-img-placeholder"></div>'
           }
-          <button class="kfo-heart-btn ${active ? 'active' : ''}" data-handle="${product.handle}" aria-label="${active ? 'Remove from favorites' : 'Add to favorites'}">
+          <button class="kfo-heart-btn ${active ? 'active' : ''}" data-handle="${product.handle}" aria-label="${active ? kfoT('Remove from favorites') : kfoT('Add to favorites')}">
             <img src="${active ? heartActiveUrl : heartUrl}" alt="" class="kfo-heart-icon" />
           </button>
         </div>
@@ -223,13 +262,13 @@
             <select class="kfo-pfav-variant-select">
               ${variants.map(v => `
                 <option value="${v.id}" data-price="${v.price}" ${!v.available ? 'disabled' : ''}>
-                  ${v.title}${!v.available ? ' — Sold out' : ''}
+                  ${v.title}${!v.available ? kfoT(' — Sold out') : ''}
                 </option>`).join('')}
             </select>
           ` : ''}
           ${firstVariant
-            ? `<button class="kfo-pfav-add-btn kfo-view-detail-btn">ADD TO CART</button>`
-            : '<p class="kfo-pfav-unavailable">Unavailable</p>'
+            ? `<button class="kfo-pfav-add-btn kfo-view-detail-btn">${kfoT('ADD TO CART')}</button>`
+            : `<p class="kfo-pfav-unavailable">${kfoT('Unavailable')}</p>`
           }
         </div>
       </div>

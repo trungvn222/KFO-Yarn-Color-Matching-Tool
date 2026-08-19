@@ -166,6 +166,14 @@
   line-height: 1.6;
   margin: 0 0 20px;
 }
+/* The description is rich text; the theme zeroes <p> margins, so give
+   Enter-separated paragraphs a visible gap at every breakpoint. */
+.kfo-modal-desc p {
+  margin: 0 0 0.75em;
+}
+.kfo-modal-desc p:last-child {
+  margin-bottom: 0;
+}
 
 /* Components (product list). Row layout (swatch/name/button) driven by named
    CSS grid areas per breakpoint below — "img" spans both rows on mobile so
@@ -440,7 +448,8 @@
     font-family: "Raleway", sans-serif;
     font-size: 20px;
     font-weight: 400;
-    letter-spacing: 0;
+    /* Same 22% tracking as the desktop title (5.5px @ 25px), scaled to 20px */
+    letter-spacing: 4.4px;
     text-align: left;
     color: #3d3a35;
     margin: 0 0 12px;
@@ -452,7 +461,7 @@
     color: #3d3a35;
     text-align: left;
     margin: 0 0 24px;
-    line-height: 1.2;
+    line-height: 1.4;
   }
   .kfo-modal-fav-btn {
     font-size: 16px;
@@ -593,7 +602,8 @@
     font-family: "Raleway", sans-serif;
     font-size: 20px;
     font-weight: 400;
-    letter-spacing: 0;
+    /* Same 22% tracking as the desktop title (5.5px @ 25px), scaled to 20px */
+    letter-spacing: 4.4px;
     text-align: left;
     color: #3d3a35;
     margin: 0 0 12px;
@@ -605,7 +615,7 @@
     color: #3d3a35;
     text-align: left;
     margin: 0 0 24px;
-    line-height: 1.2;
+    line-height: 1.4;
   }
   .kfo-modal-fav-btn {
     font-size: 18px;
@@ -692,12 +702,12 @@
     background: #fff;
   }
   .kfo-modal-left {
-    /* 70px left padding + 448px image at the full 1136 card (518/1136) */
-    flex: 0 0 min(518px, 45.6%);
+    /* 70px side padding + image at the full 1136 card (588/1136) */
+    flex: 0 0 min(588px, 52%);
     box-sizing: border-box;
-    padding: 67px 0 67px 70px;
+    padding: 67px 70px 67px 70px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     background: #fff;
   }
@@ -713,7 +723,7 @@
   /* Same wide-tracked display title as the 769-1024 spec */
   .kfo-modal-title {
     font-family: "Raleway", sans-serif;
-    font-size: 25px;
+    font-size: 24px;
     font-weight: 400;
     line-height: 1.2;
     letter-spacing: 5.5px;
@@ -721,7 +731,7 @@
   }
   .kfo-modal-desc {
     font-size: 16px;
-    line-height: 1.2;
+    line-height: 1.4;
     margin-bottom: 40px;
   }
   .kfo-modal-fav-btn {
@@ -733,12 +743,13 @@
   .kfo-modal-components {
     margin-top: auto;
   }
-  /* Heart SVGs carry built-in padding — 40px box + negative margins render
-     the glyph at the design's 22.5x20 with a true 8px gap to the text. */
+  /* Heart SVGs carry built-in padding — 40px box + negative side margins
+     render the glyph at the design's width with a true 8px gap to the text. */
   .kfo-modal-fav-icon {
     width: 40px;
     height: 40px;
-    margin: -10px -9px -10px -8px;
+    margin: 0 -9px 0 -8px;
+    display: block;
   }
   .kfo-modal-img-btn {
     width: 40px;
@@ -750,13 +761,13 @@
     top: 25px;
     right: 31px;
   }
-  /* Content top-aligned with the image's top edge (67px), 60px gap to the
-     image, 71px right padding per the frame */
+  /* Content top-aligned with the image's top edge (67px); the left column's
+     own 70px right padding provides the gap to the image */
   .kfo-modal-right {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    padding: 67px 70px 67px 60px;
+    padding: 67px 70px 67px 0;
   }
   /* Figma desktop spec (node 4249-4318): swatch/name/button in one row,
      80px swatch, 14px name, 44px-tall button — shared with 769-1024 below
@@ -842,7 +853,7 @@
     font-family: "Roboto", sans-serif;
     font-weight: 400;
     font-size: 16px;
-    line-height: 1.2;
+    line-height: 1.4;
     letter-spacing: 0;
     color: #3d3a35;
     margin: 0 0 20px;

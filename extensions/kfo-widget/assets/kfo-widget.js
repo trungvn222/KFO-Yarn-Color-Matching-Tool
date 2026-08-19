@@ -1,4 +1,40 @@
 (function () {
+  // Danish UI strings for the .dk storefront (keyed by the English text, so
+  // English is the automatic fallback everywhere else).
+  const KFO_DA = {
+    "CLEAR ALL": "RYD ALT",
+    "SEE MORE": "SE MERE",
+    "SEE LESS": "SE MINDRE",
+    "Show all": "Vis alle",
+    "Show less": "Vis mindre",
+    "VIEW DETAIL": "SE DETALJER",
+    "ADDED TO FAVORITE!": "TILFØJET TIL FAVORITTER!",
+    "VIEW FAVORITES": "SE FAVORITTER",
+    "No combinations found.": "Ingen kombinationer fundet.",
+    Prev: "Forrige",
+    Next: "Næste",
+  };
+  const kfoT = (s) => {
+    let lang = "";
+    try {
+      lang = String(window.KFO_LANG || "").toLowerCase();
+      if (lang !== "da" && lang !== "en") {
+        const detected = String(
+          (window.Shopify && window.Shopify.locale) ||
+            document.documentElement.lang ||
+            "",
+        ).toLowerCase();
+        lang =
+          detected.indexOf("da") === 0 ||
+          location.hostname.indexOf("knittingforolive.dk") !== -1
+            ? "da"
+            : "en";
+      }
+    } catch (e) {
+      lang = "en";
+    }
+    return (lang === "da" && KFO_DA[s]) || s;
+  };
   const ALGOLIA_CDN =
     "https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js";
 
@@ -155,8 +191,8 @@
       toastEl.innerHTML = `
         <div class="kfo-toast-thumb"></div>
         <div class="kfo-toast-body">
-          <span class="kfo-toast-title">ADDED TO FAVORITE!</span>
-          <a class="kfo-toast-link" href="${favoritesUrl}">VIEW FAVORITES</a>
+          <span class="kfo-toast-title">${kfoT("ADDED TO FAVORITE!")}</span>
+          <a class="kfo-toast-link" href="${favoritesUrl}">${kfoT("VIEW FAVORITES")}</a>
         </div>
         <button class="kfo-toast-close" type="button" aria-label="Close">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 1.20857L10.7914 0L6 4.79143L1.20857 0L0 1.20857L4.79143 6L0 10.7914L1.20857 12L6 7.20857L10.7914 12L12 10.7914L7.20857 6L12 1.20857Z" fill="currentColor"/></svg>
@@ -219,11 +255,11 @@
             ? `
           <div class="kfo-filter-header">
             <span class="kfo-filter-label">${colorFilterLabel}</span>
-            <button class="kfo-clear-btn" id="kfo-clear-btn">CLEAR ALL</button>
+            <button class="kfo-clear-btn" id="kfo-clear-btn">${kfoT("CLEAR ALL")}</button>
           </div>
           <div class="kfo-color-grid" id="kfo-color-filters"></div>
         `
-            : '<button class="kfo-clear-btn" id="kfo-clear-btn">CLEAR ALL</button>'
+            : `<button class="kfo-clear-btn" id="kfo-clear-btn">${kfoT("CLEAR ALL")}</button>`
         }
         ${showTags ? '<div class="kfo-filter-group" id="kfo-tag-filters"></div>' : ""}
       </div>
@@ -345,7 +381,9 @@
       });
       const toggleBtn = el.querySelector("#kfo-see-toggle");
       if (toggleBtn)
-        toggleBtn.textContent = colorsExpanded ? "SEE LESS" : "SEE MORE";
+        toggleBtn.textContent = colorsExpanded
+          ? kfoT("SEE LESS")
+          : kfoT("SEE MORE");
     }
 
     // --- Filter renderers ---
@@ -376,7 +414,7 @@
           .join("") +
         (hasToggle
           ? `
-        <button class="kfo-see-more-btn" id="kfo-see-toggle">${colorsExpanded ? "SEE LESS" : "SEE MORE"}</button>
+        <button class="kfo-see-more-btn" id="kfo-see-toggle">${colorsExpanded ? kfoT("SEE LESS") : kfoT("SEE MORE")}</button>
       `
           : "");
 
@@ -470,7 +508,7 @@
       nbPages = res.nbPages || 1;
 
       if (!res.hits.length) {
-        grid.innerHTML = '<p class="kfo-empty">No combinations found.</p>';
+        grid.innerHTML = `<p class="kfo-empty">${kfoT("No combinations found.")}</p>`;
         renderPagination();
         return;
       }
@@ -546,7 +584,7 @@
         .join("");
 
       if (!grid.querySelector(".kfo-section")) {
-        grid.innerHTML = '<p class="kfo-empty">No combinations found.</p>';
+        grid.innerHTML = `<p class="kfo-empty">${kfoT("No combinations found.")}</p>`;
         return;
       }
 
@@ -621,7 +659,7 @@
               ${showAllHit.image_url ? `<img src="${showAllHit.image_url}" alt="" />` : '<div class="kfo-show-all-card-bg"></div>'}
               <div class="kfo-show-all-overlay">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M22.1509 4.18994C23.2586 4.83611 23.9971 6.01767 23.9971 7.38385V16.6148C23.9971 20.6949 20.6924 23.9996 16.6124 23.9996H7.38141C6.01523 23.9996 4.83367 23.2611 4.1875 22.1534H16.6124C19.6586 22.1534 22.1509 19.661 22.1509 16.6148V4.18994ZM13.8431 9.23004C14.0879 9.23004 14.3227 9.32729 14.4958 9.50041C14.6689 9.67352 14.7662 9.90831 14.7662 10.1531C14.7662 10.398 14.6689 10.6327 14.4958 10.8059C14.3227 10.979 14.0879 11.0762 13.8431 11.0762H6.45831C6.21349 11.0762 5.9787 10.979 5.80559 10.8059C5.63247 10.6327 5.53522 10.398 5.53522 10.1531C5.53522 9.90831 5.63247 9.67352 5.80559 9.50041C5.9787 9.32729 6.21349 9.23004 6.45831 9.23004H13.8431Z" fill="currentColor"/><path d="M9.49793 5.80889C9.32482 5.98201 9.22756 6.2168 9.22756 6.46162V13.8464C9.22756 14.0912 9.32482 14.326 9.49793 14.4991C9.67104 14.6722 9.90584 14.7695 10.1507 14.7695C10.3955 14.7695 10.6303 14.6722 10.8034 14.4991C10.9765 14.326 11.0738 14.0912 11.0738 13.8464V6.46162C11.0738 6.2168 10.9765 5.98201 10.8034 5.80889C10.6303 5.63578 10.3955 5.53852 10.1507 5.53852C9.90584 5.53852 9.67104 5.63578 9.49793 5.80889Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M16.6157 0C18.6521 0 20.3081 1.65603 20.3081 3.69238V16.6157C20.3081 18.6521 18.6521 20.3081 16.6157 20.3081H3.69238C1.65603 20.3081 0 18.6521 0 16.6157V3.69238C0 1.65603 1.65603 0 3.69238 0H16.6157ZM3.69238 1.84619C2.67513 1.84619 1.84619 2.67513 1.84619 3.69238V16.6157C1.84619 17.6348 2.67513 18.4619 3.69238 18.4619H16.6157C17.633 18.4619 18.4619 17.6348 18.4619 16.6157V3.69238C18.4619 2.67513 17.633 1.84619 16.6157 1.84619H3.69238Z" fill="currentColor"/></svg>
-                <span>Show all</span>
+                <span>${kfoT("Show all")}</span>
               </div>
             </div>
           `
@@ -633,7 +671,7 @@
             <div class="kfo-show-less-card" role="button" tabindex="0">
               <span class="kfo-show-less-inner">
                 <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M14.7648 2.79346C15.5033 3.22424 15.9956 4.01196 15.9956 4.92276V11.0768C15.9956 13.7969 13.7925 16 11.0724 16H4.91836C4.00756 16 3.21985 15.5077 2.78906 14.7692H11.0724C13.1032 14.7692 14.7648 13.1076 14.7648 11.0768V2.79346ZM9.2262 6.15357C9.38941 6.15357 9.54594 6.2184 9.66135 6.33382C9.77676 6.44923 9.8416 6.60576 9.8416 6.76897C9.8416 6.93219 9.77676 7.08872 9.66135 7.20413C9.54594 7.31954 9.38941 7.38438 9.2262 7.38438H4.30296C4.13974 7.38438 3.98321 7.31954 3.8678 7.20413C3.75239 7.08872 3.68755 6.93219 3.68755 6.76897C3.68755 6.60576 3.75239 6.44923 3.8678 6.33382C3.98321 6.2184 4.13974 6.15357 4.30296 6.15357H9.2262Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M11.0773 0C12.4349 0 13.5389 1.10404 13.5389 2.46162V11.0773C13.5389 12.4349 12.4349 13.5389 11.0773 13.5389H2.46162C1.10404 13.5389 0 12.4349 0 11.0773V2.46162C0 1.10404 1.10404 0 2.46162 0H11.0773ZM2.46162 1.23081C1.78344 1.23081 1.23081 1.78344 1.23081 2.46162V11.0773C1.23081 11.7567 1.78344 12.3081 2.46162 12.3081H11.0773C11.7555 12.3081 12.3081 11.7567 12.3081 11.0773V2.46162C12.3081 1.78344 11.7555 1.23081 11.0773 1.23081H2.46162Z" fill="currentColor"/></svg>
-                <span>Show less</span>
+                <span>${kfoT("Show less")}</span>
               </span>
             </div>
           `
@@ -709,7 +747,7 @@
           </div>
           <div class="kfo-card-body">
             <p class="kfo-card-name">${c.name}</p>
-            <button class="kfo-view-detail-btn" data-id="${c.objectID}">VIEW DETAIL</button>
+            <button class="kfo-view-detail-btn" data-id="${c.objectID}">${kfoT("VIEW DETAIL")}</button>
           </div>
         </div>
       `;
@@ -784,9 +822,9 @@
         )
         .join("");
       el.innerHTML = `
-        <button class="kfo-page-btn" id="kfo-prev" ${page === 0 ? "disabled" : ""}>&#8592; Prev</button>
+        <button class="kfo-page-btn" id="kfo-prev" ${page === 0 ? "disabled" : ""}>&#8592; ${kfoT("Prev")}</button>
         <div class="kfo-page-numbers">${numbers}</div>
-        <button class="kfo-page-btn" id="kfo-next" ${page >= nbPages - 1 ? "disabled" : ""}>Next &#8594;</button>
+        <button class="kfo-page-btn" id="kfo-next" ${page >= nbPages - 1 ? "disabled" : ""}>${kfoT("Next")} &#8594;</button>
       `;
       el.querySelector("#kfo-prev")?.addEventListener("click", () => {
         if (page > 0) goToPage(page - 1);

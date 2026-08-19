@@ -23,6 +23,9 @@
 
   {{ 'kfo-widget.css' | asset_url | stylesheet_tag }}
   {{ 'kfo-modal.css' | asset_url | stylesheet_tag }}
+  {% if block.settings.language != blank and block.settings.language != 'auto' %}
+    <script>window.KFO_LANG = '{{ block.settings.language }}';</script>
+  {% endif %}
   <script>
     (function () {
       var src = '{{ 'kfo-widget.js' | asset_url }}';
@@ -191,6 +194,22 @@
       "id": "atc_success_script",
       "label": "On add-to-cart success — custom JS",
       "info": "JavaScript to run after a product is added to cart from the popup. Available: detail.variantId, detail.numericId, detail.button, detail.combination. Example: document.querySelector('cart-drawer')?.open();"
+    },
+    {
+      "type": "header",
+      "content": "Language"
+    },
+    {
+      "type": "select",
+      "id": "language",
+      "label": "Widget language",
+      "options": [
+        { "value": "auto", "label": "Auto (detect from storefront)" },
+        { "value": "en", "label": "English" },
+        { "value": "da", "label": "Danish" }
+      ],
+      "default": "auto",
+      "info": "Auto shows Danish when the storefront language is Danish."
     }
   ]
 }

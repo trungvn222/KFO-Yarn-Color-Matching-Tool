@@ -1062,27 +1062,32 @@
     padding: 16px 0 0;
   }
   /* Section header (image+text row) -> card grid below it, same 60px as
-     wide desktop; image stays 570x331 too */
+     wide desktop. Figma node 4221-6703 (2026-08-19, supersedes the old
+     570x331 spec): 550x320 image at the 958 frame, 20px gap, and the text
+     column takes the remaining width so longer color descriptions fit.
+     Measured from the node's 2x API render (JSON endpoint rate-limited). */
   .kfo-section-header {
     margin-bottom: 60px;
   }
   .kfo-section-img-wrap {
-    width: 570px;
-    max-width: 570px;
-    height: 331px;
-    min-height: 0;
+    /* 550/958 of the frame; scales down with the container below 1024 */
+    width: 57.4%;
+    max-width: 550px;
+    height: auto;
+    min-height: 320px;
   }
-  /* Section header: text column narrows to 347px, image->text gap 41px */
   .kfo-section-info {
-    flex: 0 0 347px;
-    width: 347px;
+    flex: 1 1 auto;
+    width: auto;
     text-align: left;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    /* centers short text, top-aligns instead of clipping once it outgrows
+       the image column */
+    justify-content: safe center;
     padding-top: 0;
     padding-bottom: 0;
-    padding-left: 41px;
+    padding-left: 20px;
     padding-right: 0;
   }
   .kfo-section-title {
@@ -1090,6 +1095,13 @@
   }
   .kfo-section-desc {
     line-height: 1.2;
+  }
+  /* Clear break between Enter-separated paragraphs per the frame */
+  .kfo-section-desc p {
+    margin: 0 0 28px;
+  }
+  .kfo-section-desc p:last-child {
+    margin-bottom: 0;
   }
   /* View Detail button and See more: same size as wide desktop */
   .kfo-view-detail-btn {

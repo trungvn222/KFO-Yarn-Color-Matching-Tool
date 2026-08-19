@@ -6,6 +6,39 @@
 (function () {
   "use strict";
 
+  // Danish UI strings for the .dk storefront (keyed by the English text, so
+  // English is the automatic fallback everywhere else).
+  const KFO_DA = {
+    "COMBINATION DETAILS": "DETALJER",
+    "ADD TO FAVORITE": "TILFØJ TIL FAVORITTER",
+    "ADDED TO FAVORITE": "TILFØJET TIL FAVORITTER",
+    Components: "Komponenter",
+    "ADD TO CART": "LÆG I KURVEN",
+    "ADDED ✓": "TILFØJET ✓",
+    "Could not add to cart.": "Varen kunne ikke lægges i kurven.",
+  };
+  const kfoT = (s) => {
+    let lang = "";
+    try {
+      lang = String(window.KFO_LANG || "").toLowerCase();
+      if (lang !== "da" && lang !== "en") {
+        const detected = String(
+          (window.Shopify && window.Shopify.locale) ||
+            document.documentElement.lang ||
+            "",
+        ).toLowerCase();
+        lang =
+          detected.indexOf("da") === 0 ||
+          location.hostname.indexOf("knittingforolive.dk") !== -1
+            ? "da"
+            : "en";
+      }
+    } catch (e) {
+      lang = "en";
+    }
+    return (lang === "da" && KFO_DA[s]) || s;
+  };
+
   // Inline heart glyph for the "ADD TO FAVORITE" text button — same heart
   // shape as the kfo-heart assets but without the translucent circle badge
   // (that badge belongs on the photo-overlay buttons), using currentColor so
@@ -151,11 +184,11 @@
         </div>
         <div class="kfo-modal-right">
           <button class="kfo-modal-close" type="button"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M1.77 31.54L0 29.77L14 15.77L0 1.77L1.77 0L15.77 14L29.77 0L31.54 1.77L17.54 15.77L31.54 29.77L29.77 31.54L15.77 17.54L1.77 31.54Z" fill="#3D3A35"/></svg></button>
-          <h2 class="kfo-modal-title">COMBINATION DETAILS</h2>
+          <h2 class="kfo-modal-title">${kfoT("COMBINATION DETAILS")}</h2>
           ${combo.description ? `<div class="kfo-modal-desc">${combo.description}</div>` : ""}
           <button class="kfo-modal-fav-btn ${favActive ? "active" : ""}" data-action="fav-text">
             <span class="kfo-modal-fav-icon">${favHeartSvg(favActive)}</span>
-            ${favActive ? "ADDED TO FAVORITE" : "ADD TO FAVORITE"}
+            ${favActive ? kfoT("ADDED TO FAVORITE") : kfoT("ADD TO FAVORITE")}
           </button>
           <p class="kfo-cart-msg"></p>
           ${
@@ -163,7 +196,7 @@
               ? `
           <div class="kfo-modal-components">
             <div class="kfo-modal-components-head">
-              <p class="kfo-modal-components-title">Components</p>
+              <p class="kfo-modal-components-title">${kfoT("Components")}</p>
               <div class="kfo-modal-components-divider"></div>
             </div>
             <div class="kfo-modal-products-grid">
@@ -177,7 +210,7 @@
                       : '<div class="kfo-modal-product-img kfo-modal-product-img--placeholder"></div>'
                   }
                   <p class="kfo-modal-product-name">${p.product_name}</p>
-                  <button class="kfo-add-to-cart-btn" data-variant-id="${p.variant_id}">ADD TO CART</button>
+                  <button class="kfo-add-to-cart-btn" data-variant-id="${p.variant_id}">${kfoT("ADD TO CART")}</button>
                 </div>
               `,
                 )
@@ -214,7 +247,7 @@
             });
             if (!res.ok) throw await res.json().catch(() => ({}));
 
-            btn.textContent = "ADDED ✓";
+            btn.textContent = kfoT("ADDED ✓");
             btn.style.background = "#111";
             btn.style.color = "#fff";
             showCartMsg("", false);
@@ -232,7 +265,7 @@
             }
 
             setTimeout(() => {
-              btn.textContent = "ADD TO CART";
+              btn.textContent = kfoT("ADD TO CART");
               btn.style.background = "";
               btn.style.color = "";
               btn.disabled = false;
@@ -240,9 +273,9 @@
           } catch (err) {
             btn.textContent = "FAILED";
             btn.style.color = "#e53e3e";
-            showCartMsg(err?.description || err?.message || "Could not add to cart.", true);
+            showCartMsg(err?.description || err?.message || kfoT("Could not add to cart."), true);
             setTimeout(() => {
-              btn.textContent = "ADD TO CART";
+              btn.textContent = kfoT("ADD TO CART");
               btn.style.color = "";
               btn.disabled = false;
               showCartMsg("", false);
@@ -262,8 +295,8 @@
         const favBtn = body.querySelector('[data-action="fav-text"]');
         favBtn.classList.toggle("active", active);
         favBtn.childNodes[favBtn.childNodes.length - 1].textContent = active
-          ? "ADDED TO FAVORITE"
-          : "ADD TO FAVORITE";
+          ? kfoT("ADDED TO FAVORITE")
+          : kfoT("ADD TO FAVORITE");
         onFavoriteChange?.(combo, active);
       }
       body.querySelector('[data-action="fav"]').addEventListener("click", onFavClick);

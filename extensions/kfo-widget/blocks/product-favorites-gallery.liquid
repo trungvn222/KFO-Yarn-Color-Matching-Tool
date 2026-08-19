@@ -7,6 +7,9 @@
 ></div>
 
 {{ 'kfo-widget.css' | asset_url | stylesheet_tag }}
+{% if block.settings.language != blank and block.settings.language != 'auto' %}
+  <script>window.KFO_LANG = '{{ block.settings.language }}';</script>
+{% endif %}
 <script>
   (function () {
     var src = '{{ 'kfo-product-favorites.js' | asset_url }}';
@@ -38,6 +41,18 @@
       "max": 48,
       "step": 4,
       "default": 12
+    },
+    {
+      "type": "select",
+      "id": "language",
+      "label": "Widget language",
+      "options": [
+        { "value": "auto", "label": "Auto (detect from storefront)" },
+        { "value": "en", "label": "English" },
+        { "value": "da", "label": "Danish" }
+      ],
+      "default": "auto",
+      "info": "Auto shows Danish when the storefront language is Danish."
     }
   ]
 }

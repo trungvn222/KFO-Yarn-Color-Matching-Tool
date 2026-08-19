@@ -10,6 +10,9 @@
 ></div>
 
 {{ 'kfo-widget.css' | asset_url | stylesheet_tag }}
+{% if block.settings.language != blank and block.settings.language != 'auto' %}
+  <script>window.KFO_LANG = '{{ block.settings.language }}';</script>
+{% endif %}
 <script>
   (function () {
     var src = '{{ 'kfo-product-favorites.js' | asset_url }}';
@@ -36,6 +39,18 @@
     {
       "type": "paragraph",
       "content": "Adds a heart button that lets customers save this product to their favorites. No configuration needed — works automatically."
+    },
+    {
+      "type": "select",
+      "id": "language",
+      "label": "Widget language",
+      "options": [
+        { "value": "auto", "label": "Auto (detect from storefront)" },
+        { "value": "en", "label": "English" },
+        { "value": "da", "label": "Danish" }
+      ],
+      "default": "auto",
+      "info": "Auto shows Danish when the storefront language is Danish."
     }
   ]
 }

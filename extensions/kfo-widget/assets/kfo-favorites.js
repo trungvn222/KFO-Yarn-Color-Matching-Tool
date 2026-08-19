@@ -4,6 +4,36 @@
   const ALGOLIA_CDN = 'https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js';
   const FAV_KEY = 'kfo_favorites';
 
+  // Danish UI strings for the .dk storefront (keyed by the English text, so
+  // English is the automatic fallback everywhere else).
+  const KFO_DA = {
+    'No favorited items or pairings for now': 'Ingen favoritter',
+    'EXPLORE OUR WEBSITE': 'UDFORSK VORES HJEMMESIDE',
+    'VIEW DETAIL': 'SE DETALJER',
+  };
+  const kfoT = (s) => {
+    let lang = '';
+    try {
+      lang = String(window.KFO_LANG || '').toLowerCase();
+      if (lang !== 'da' && lang !== 'en') {
+        const detected = String(
+          (window.Shopify && window.Shopify.locale) ||
+            document.documentElement.lang ||
+            '',
+        ).toLowerCase();
+        lang =
+          detected.indexOf('da') === 0 ||
+          location.hostname.indexOf('knittingforolive.dk') !== -1
+            ? 'da'
+            : 'en';
+      }
+    } catch (e) {
+      lang = 'en';
+    }
+    return (lang === 'da' && KFO_DA[s]) || s;
+  };
+  const EMPTY_HTML = `<div class="kfo-empty"><p class="kfo-empty-text">${kfoT('No favorited items or pairings for now')}</p><a class="kfo-empty-btn" href="/">${kfoT('EXPLORE OUR WEBSITE')}</a></div>`;
+
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       if (window.algoliasearch) { resolve(); return; }
@@ -62,7 +92,7 @@
         card.remove();
         const grid = document.getElementById('kfo-fav-grid');
         if (grid && !grid.querySelector('.kfo-card')) {
-          grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
+          grid.innerHTML = EMPTY_HTML;
         }
       },
     });
@@ -77,7 +107,7 @@
       const favIds = getFavs();
 
       if (!favIds.length) {
-        grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
+        grid.innerHTML = EMPTY_HTML;
         return;
       }
 
@@ -89,7 +119,7 @@
       });
 
       if (!hits.length) {
-        grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
+        grid.innerHTML = EMPTY_HTML;
         return;
       }
 
@@ -112,7 +142,7 @@
           </div>
           <div class="kfo-card-body">
             <p class="kfo-card-name">${c.name}</p>
-            <button class="kfo-view-detail-btn" data-id="${c.objectID}">VIEW DETAIL</button>
+            <button class="kfo-view-detail-btn" data-id="${c.objectID}">${kfoT('VIEW DETAIL')}</button>
           </div>
         </div>
       `;
@@ -129,7 +159,7 @@
           card.remove();
           const grid = document.getElementById('kfo-fav-grid');
           if (!grid.querySelector('.kfo-card')) {
-            grid.innerHTML = '<div class="kfo-empty"><p class="kfo-empty-text">No favorited items or pairings for now</p><a class="kfo-empty-btn" href="/">EXPLORE OUR WEBSITE</a></div>';
+            grid.innerHTML = EMPTY_HTML;
           }
         });
 
