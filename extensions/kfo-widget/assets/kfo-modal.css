@@ -399,7 +399,9 @@
     position: relative;
     max-width: 522px;
     background: #f3f3f3;
-    padding: 60px;
+    /* Extra top padding fits the heart/zoom row between the close X and the
+       image (icons sit above the image on touch so they don't cover it) */
+    padding: 108px 60px 60px;
   }
   .kfo-modal-body {
     flex-direction: column;
@@ -414,10 +416,15 @@
     aspect-ratio: 1;
     background: #f3f3f3;
   }
-  /* Heart + zoom always visible on touch (no hover on mobile) */
+  /* Heart + zoom always visible on touch (no hover on mobile), moved off the
+     image into the strip above it (right-aligned, below the close X) so they
+     don't cover the photo */
   .kfo-modal-img-actions {
     opacity: 1;
     background: transparent;
+    inset: auto 0 100% auto;
+    margin-bottom: 8px;
+    gap: 24px;
   }
   .kfo-modal-img-btn {
     width: 44px;
@@ -550,7 +557,9 @@
     overflow-y: auto;
     position: relative;
     background: #f3f3f3;
-    padding: 60px 16px 28px;
+    /* Extra top padding fits the heart/zoom row between the close X and the
+       image (icons sit above the image on touch so they don't cover it) */
+    padding: 96px 16px 28px;
   }
   .kfo-modal-body {
     flex-direction: column;
@@ -565,11 +574,15 @@
     aspect-ratio: 1;
     background: #f3f3f3;
   }
-  /* Heart + zoom always visible on touch (no hover on mobile) */
+  /* Heart + zoom always visible on touch (no hover on mobile), moved off the
+     image into the strip above it (right-aligned, below the close X) so they
+     don't cover the photo */
   .kfo-modal-img-actions {
     opacity: 1;
     background: transparent;
-    gap: 32px;
+    inset: auto 0 100% auto;
+    margin-bottom: 8px;
+    gap: 24px;
   }
   .kfo-modal-img-btn {
     width: 44px;
