@@ -942,7 +942,11 @@
   .kfo-section-img-wrap {
     width: 100%;
     max-width: 100%;
-    min-height: 200px;
+    /* Same landscape crop as 481-768 (Figma 704x408.8 ratio) — without a
+       fixed ratio the wrap falls back to the source image's intrinsic
+       (square) ratio. */
+    aspect-ratio: 704 / 408.81;
+    min-height: 0;
   }
   .kfo-section-info {
     padding: 16px 0 0;
@@ -1070,11 +1074,14 @@
     margin-bottom: 60px;
   }
   .kfo-section-img-wrap {
-    /* 550/958 of the frame; scales down with the container below 1024 */
-    width: 57.4%;
-    max-width: 550px;
+    /* Figma node 4221-6794: 570x331 image at the 958 frame (570/958 = 59.5%);
+       scales down with the container below 1024. The fixed aspect-ratio keeps
+       the crop landscape even when the uploaded source image is square. */
+    width: 59.5%;
+    max-width: 570px;
     height: auto;
-    min-height: 320px;
+    aspect-ratio: 570 / 331;
+    min-height: 0;
   }
   .kfo-section-info {
     flex: 1 1 auto;
