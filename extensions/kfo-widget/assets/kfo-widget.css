@@ -375,8 +375,8 @@
   transition: transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
   will-change: transform;
 }
-.kfo-card:hover .kfo-card-img img {
-  transform: scale(1.4);
+.kfo-card:hover .kfo-card-img > img {
+  transform: scale(2);
 }
 .kfo-card-img-placeholder {
   position: absolute;
