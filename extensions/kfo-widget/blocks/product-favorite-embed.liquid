@@ -1,0 +1,58 @@
+{% comment %}
+  App embed: loads the product-favorite heart on product pages without
+  requiring an app block slot. Needed because the live theme still uses a
+  legacy templates/product.liquid (app blocks only work on JSON templates).
+
+  The theme only has to render the mount element wherever the heart should
+  appear (e.g. right under the product title):
+
+    <div id="kfo-product-fav-btn" data-handle="{{ product.handle | escape }}"></div>
+
+  Icon URLs are provided here as globals so the theme markup stays a single
+  line — kfo-product-favorites.js falls back to them when the mount div has
+  no data-heart-url attributes.
+{% endcomment %}
+{% if block.settings.language != blank and block.settings.language != 'auto' %}
+  <script>window.KFO_LANG = '{{ block.settings.language }}';</script>
+{% endif %}
+<script>
+  window.KFO_HEART_URL = "{{ 'kfo-heart.svg' | asset_url }}";
+  window.KFO_HEART_ACTIVE_URL = "{{ 'kfo-heart-active.svg' | asset_url }}";
+</script>
+<style>
+  .kfo-product-fav-btn{display:inline-flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;font-family:inherit;font-size:15px;letter-spacing:.08em;color:#111;text-transform:uppercase}
+  .kfo-product-fav-btn:hover{opacity:.7}
+  .kfo-product-fav-heart{width:44px;height:44px;display:inline-flex;flex:none}
+  .kfo-product-fav-heart svg{width:100%;height:100%;display:block}
+  @media (max-width:768px){.kfo-product-fav-heart{width:40px;height:40px}}
+  .kfo-product-fav-mount{position:absolute;top:10px;right:10px;z-index:2}
+  .kfo-pcard-fav-btn{width:28px;height:28px;background:none;border:none;padding:0;cursor:pointer;display:block;transition:transform .1s}
+  .kfo-pcard-fav-btn:hover{transform:scale(1.15)}
+  .kfo-pcard-fav-btn img{width:100%;height:100%;display:block}
+</style>
+<script src="{{ 'kfo-product-favorites.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "KFO Product Favorite",
+  "target": "body",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Enables the product favorite heart on product pages. Add <div id=\"kfo-product-fav-btn\" data-handle=\"{{ product.handle }}\"></div> in the theme where the heart should appear."
+    },
+    {
+      "type": "select",
+      "id": "language",
+      "label": "Widget language",
+      "options": [
+        { "value": "auto", "label": "Auto (detect from storefront)" },
+        { "value": "en", "label": "English" },
+        { "value": "da", "label": "Danish" }
+      ],
+      "default": "auto",
+      "info": "Auto shows Danish when the storefront language is Danish."
+    }
+  ]
+}
+{% endschema %}

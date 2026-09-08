@@ -705,29 +705,87 @@
 .kfo-product-fav-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
-  transition: transform 0.1s;
-  line-height: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: #111;
+  text-transform: uppercase;
 }
 .kfo-product-fav-btn:hover {
-  transform: scale(1.15);
+  opacity: 0.7;
 }
-.kfo-product-fav-icon {
-  width: 28px;
-  height: 28px;
+/* Same box as the modal's fav-button heart (44px desktop / 40px mobile) so
+   the heart renders the same visual size everywhere. */
+.kfo-product-fav-heart {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  flex: none;
+}
+@media (max-width: 768px) {
+  .kfo-product-fav-heart {
+    width: 40px;
+    height: 40px;
+  }
+}
+.kfo-product-fav-heart svg {
+  width: 100%;
+  height: 100%;
   display: block;
 }
 
-/* Product favorites gallery */
+/* Product favorites gallery — cards mirror the theme's product card:
+   portrait image, centered uppercase title, centered price. */
+.kfo-pfav-card .kfo-card-img {
+  aspect-ratio: 3 / 4;
+}
+.kfo-pfav-info {
+  padding: 16px 8px 0;
+  text-align: center;
+}
+.kfo-pfav-title {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 2.8px;
+  text-transform: uppercase;
+  color: #3d3a35;
+  margin: 0;
+  line-height: 1.4;
+}
 .kfo-pfav-price {
   font-size: 15px;
-  font-weight: 500;
-  color: #111;
-  margin: 0 0 10px;
+  font-weight: 400;
+  color: #3d3a35;
+  letter-spacing: 0.05em;
+  margin: 8px 0 0;
+}
+/* "View product" bar revealed on hover, like the theme's product cards. */
+.kfo-pfav-view-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  width: calc(100% - 48px);
+  padding: 13px 0;
+  background: #fff;
+  border: 1px solid #3d3a35;
+  color: #3d3a35;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+.kfo-pfav-card:hover .kfo-pfav-view-btn {
+  opacity: 1;
 }
 .kfo-pfav-variant-select {
   width: 100%;

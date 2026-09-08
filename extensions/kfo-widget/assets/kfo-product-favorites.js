@@ -1,6 +1,11 @@
 (function () {
   'use strict';
 
+  // The script can arrive twice on one page (theme app block + app embed);
+  // binding the favorite listeners twice would toggle favorites back off.
+  if (window.__kfoProductFavoritesLoaded) return;
+  window.__kfoProductFavoritesLoaded = true;
+
   const FAV_KEY = 'kfo_product_favorites';
 
   // Danish UI strings for the .dk storefront (keyed by the English text, so
@@ -14,6 +19,9 @@
     'ADDED ✓': 'TILFØJET ✓',
     'Remove from favorites': 'Fjern fra favoritter',
     'Add to favorites': 'Tilføj til favoritter',
+    'ADD TO FAVORITE': 'TILFØJ TIL FAVORITTER',
+    'ADDED TO FAVORITE': 'TILFØJET TIL FAVORITTER',
+    'VIEW PRODUCT': 'SE PRODUKT',
     'From': 'Fra',
     ' — Sold out': ' — Udsolgt',
     'Unavailable': 'Ikke tilgængelig',
@@ -53,35 +61,39 @@
   }
 
   // --- Heart button block (product page) ---
+  // Rendered as "♡ ADD TO FAVORITE" (outline heart + uppercase label), same
+  // look as the combination modal's favorite button. The SVGs are the modal's
+  // favHeartSvg glyphs, inlined here so product pages don't need kfo-modal.js.
+  function heartSvg(active) {
+    return active
+      ? `<svg viewBox="0 0 63 63" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M45.009 33.6348C46.7774 31.8478 47.8757 29.4279 47.8757 26.7288C47.8757 24.1369 46.8461 21.6512 45.0133 19.8184C43.1806 17.9857 40.6949 16.9561 38.103 16.9561C34.8454 16.9561 31.9601 18.5383 30.1918 20.9955C29.2891 19.7418 28.1006 18.7214 26.7247 18.0189C25.3489 17.3164 23.8253 16.952 22.2805 16.9561C19.6886 16.9561 17.2029 17.9857 15.3702 19.8184C13.5374 21.6512 12.5078 24.1369 12.5078 26.7288C12.5078 29.4279 13.6061 31.8478 15.3745 33.6348L30.1918 48.4521L45.009 33.6348Z" fill="currentColor"/></svg>`
+      : `<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11.2181 19.7518C10.7507 19.2875 10.3804 18.7349 10.1288 18.1261C9.87712 17.5173 9.74916 16.8644 9.75234 16.2057C9.75234 14.8733 10.2816 13.5956 11.2237 12.6534C12.1658 11.7113 13.4436 11.1821 14.776 11.1821C16.6436 11.1821 18.2748 12.1986 19.1377 13.7116H20.4616C20.9002 12.9422 21.535 12.3027 22.3011 11.8584C23.0673 11.414 23.9376 11.1807 24.8232 11.1821C26.1556 11.1821 27.4334 11.7113 28.3755 12.6534C29.3176 13.5956 29.8469 14.8733 29.8469 16.2057C29.8469 17.5887 29.2559 18.8653 28.3812 19.7518L19.7996 28.3215L11.2181 19.7518ZM29.2086 20.591C30.3315 19.4563 31.0289 17.9196 31.0289 16.2057C31.0289 14.5598 30.3751 12.9814 29.2113 11.8176C28.0475 10.6538 26.4691 10 24.8232 10C22.7547 10 20.9225 11.0047 19.7996 12.565C19.2264 11.7689 18.4717 11.121 17.5981 10.6749C16.7244 10.2288 15.7569 9.99744 14.776 10C13.1301 10 11.5517 10.6538 10.3879 11.8176C9.22412 12.9814 8.57031 14.5598 8.57031 16.2057C8.57031 17.9196 9.26771 19.4563 10.3906 20.591L19.7996 30L29.2086 20.591Z" fill="currentColor"/></svg>`;
+  }
+
   function initHeartBtn() {
     const root = document.getElementById('kfo-product-fav-btn');
     if (!root) return;
 
-    const handle       = root.dataset.handle;
-    const heartUrl     = root.dataset.heartUrl || '';
-    const heartActiveUrl = root.dataset.heartActiveUrl || heartUrl;
-
+    const handle = root.dataset.handle;
     if (!handle) return;
 
     const btn = document.createElement('button');
-    btn.className = 'kfo-product-fav-btn' + (isFav(handle) ? ' active' : '');
-    btn.setAttribute('aria-label', isFav(handle) ? kfoT('Remove from favorites') : kfoT('Add to favorites'));
-    btn.innerHTML = `<img src="${isFav(handle) ? heartActiveUrl : heartUrl}" class="kfo-product-fav-icon" alt="" />`;
+    btn.type = 'button';
+    btn.className = 'kfo-product-fav-btn';
     root.appendChild(btn);
 
-    btn.addEventListener('click', () => {
-      toggleFav(handle);
+    function render() {
       const active = isFav(handle);
       btn.classList.toggle('active', active);
-      btn.querySelector('.kfo-product-fav-icon').src = active ? heartActiveUrl : heartUrl;
       btn.setAttribute('aria-label', active ? kfoT('Remove from favorites') : kfoT('Add to favorites'));
-    });
+      btn.innerHTML =
+        `<span class="kfo-product-fav-heart">${heartSvg(active)}</span>` +
+        `<span class="kfo-product-fav-label">${active ? kfoT('ADDED TO FAVORITE') : kfoT('ADD TO FAVORITE')}</span>`;
+    }
+    render();
 
-    window.addEventListener('kfo:product-favorites-changed', () => {
-      const active = isFav(handle);
-      btn.classList.toggle('active', active);
-      btn.querySelector('.kfo-product-fav-icon').src = active ? heartActiveUrl : heartUrl;
-    });
+    btn.addEventListener('click', () => toggleFav(handle));
+    window.addEventListener('kfo:product-favorites-changed', render);
   }
 
   // --- Gallery block ---
@@ -159,7 +171,6 @@
     function bindGalleryCards(container, products, handles, heartUrl, heartActiveUrl) {
       container.querySelectorAll('.kfo-pfav-card').forEach(card => {
         const handle = card.dataset.handle;
-        const product = products.find(p => p.handle === handle);
 
         // Heart toggle
         card.querySelector('.kfo-heart-btn').addEventListener('click', (e) => {
@@ -178,48 +189,6 @@
           }
         });
 
-        // Variant select — update price display, block card click
-        const variantSelect = card.querySelector('.kfo-pfav-variant-select');
-        if (variantSelect) {
-          variantSelect.addEventListener('click', (e) => e.stopPropagation());
-          variantSelect.addEventListener('change', (e) => {
-            e.stopPropagation();
-            const price = Number(e.target.selectedOptions[0].dataset.price);
-            const priceEl = card.querySelector('.kfo-pfav-price');
-            if (priceEl) priceEl.textContent = formatMoney(price);
-          });
-        }
-
-        // Add to cart — read variant from select or first variant
-        card.querySelector('.kfo-pfav-add-btn')?.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          const btn = e.currentTarget;
-          const variantId = variantSelect ? variantSelect.value : (product?.variants?.[0]?.id || '');
-          if (!variantId) return;
-
-          btn.disabled = true;
-          btn.textContent = '...';
-
-          try {
-            const res = await fetch('/cart/add.js', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items: [{ id: Number(variantId), quantity: 1 }] }),
-            });
-            if (!res.ok) throw await res.json().catch(() => ({}));
-            btn.textContent = kfoT('ADDED ✓');
-            btn.style.background = '#111';
-            btn.style.color = '#fff';
-            document.dispatchEvent(new CustomEvent('cart:refresh'));
-            document.dispatchEvent(new CustomEvent('theme:cart:open'));
-            setTimeout(() => { btn.textContent = kfoT('ADD TO CART'); btn.style.background = ''; btn.style.color = ''; btn.disabled = false; }, 2000);
-          } catch (err) {
-            btn.textContent = 'FAILED';
-            btn.style.color = '#e53e3e';
-            setTimeout(() => { btn.textContent = kfoT('ADD TO CART'); btn.style.color = ''; btn.disabled = false; }, 3000);
-          }
-        });
-
         // Click card → product page
         card.addEventListener('click', () => {
           window.location.href = `/products/${handle}`;
@@ -233,13 +202,14 @@
     return (cents / 100).toLocaleString(undefined, { style: 'currency', currency: window.Shopify?.currency?.active || 'USD' });
   }
 
+  // Card mirrors the theme's product card: portrait image, centered uppercase
+  // title, centered price — no variant picker / add-to-cart (the card links to
+  // the product page instead).
   function productCardHtml(product, heartUrl, heartActiveUrl) {
     const active    = isFav(product.handle);
     const img       = product.featured_image || '';
     const variants  = product.variants || [];
-    const available = variants.filter(v => v.available);
-    const firstVariant = available[0] || variants[0];
-    const hasVariantSelector = variants.length > 1 && variants[0]?.title !== 'Default Title';
+    const firstVariant = variants.find(v => v.available) || variants[0];
     const priceMin  = product.price_min ?? firstVariant?.price ?? 0;
     const priceMax  = product.price_max ?? firstVariant?.price ?? 0;
     const priceLabel = priceMin === priceMax ? formatMoney(priceMin) : `${kfoT('From')} ${formatMoney(priceMin)}`;
@@ -254,30 +224,62 @@
           <button class="kfo-heart-btn ${active ? 'active' : ''}" data-handle="${product.handle}" aria-label="${active ? kfoT('Remove from favorites') : kfoT('Add to favorites')}">
             <img src="${active ? heartActiveUrl : heartUrl}" alt="" class="kfo-heart-icon" />
           </button>
+          <span class="kfo-pfav-view-btn">${kfoT('VIEW PRODUCT')}</span>
         </div>
-        <div class="kfo-card-body">
-          <p class="kfo-card-name">${product.title}</p>
+        <div class="kfo-pfav-info">
+          <p class="kfo-pfav-title">${product.title}</p>
           <p class="kfo-pfav-price">${priceLabel}</p>
-          ${hasVariantSelector ? `
-            <select class="kfo-pfav-variant-select">
-              ${variants.map(v => `
-                <option value="${v.id}" data-price="${v.price}" ${!v.available ? 'disabled' : ''}>
-                  ${v.title}${!v.available ? kfoT(' — Sold out') : ''}
-                </option>`).join('')}
-            </select>
-          ` : ''}
-          ${firstVariant
-            ? `<button class="kfo-pfav-add-btn kfo-view-detail-btn">${kfoT('ADD TO CART')}</button>`
-            : `<p class="kfo-pfav-unavailable">${kfoT('Unavailable')}</p>`
-          }
         </div>
       </div>
     `;
   }
 
+  // --- Card overlay hearts (collection / product list) ---
+  // The theme drops `<div class="kfo-product-fav-mount" data-handle="...">`
+  // inside each product card's media wrapper; we render a small overlay heart
+  // (same icon assets as the gallery cards) into every mount. Cards are
+  // re-rendered by the theme on filtering/pagination, so a MutationObserver
+  // re-binds new mounts as they appear.
+  function initCardHearts() {
+    const heartUrl = window.KFO_HEART_URL || '';
+    const heartActiveUrl = window.KFO_HEART_ACTIVE_URL || heartUrl;
+    if (!heartUrl) return;
+
+    document.querySelectorAll('.kfo-product-fav-mount').forEach(mount => {
+      if (mount.__kfoBound) return;
+      mount.__kfoBound = true;
+      const handle = mount.dataset.handle;
+      if (!handle) return;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'kfo-pcard-fav-btn';
+
+      function render() {
+        const active = isFav(handle);
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-label', active ? kfoT('Remove from favorites') : kfoT('Add to favorites'));
+        btn.innerHTML = `<img src="${active ? heartActiveUrl : heartUrl}" alt="" />`;
+      }
+      render();
+
+      // Cards are usually wrapped in an <a> — keep the click on the heart.
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleFav(handle);
+      });
+      window.addEventListener('kfo:product-favorites-changed', render);
+      mount.appendChild(btn);
+    });
+  }
+
   function init() {
     initHeartBtn();
     initGallery();
+    initCardHearts();
+    new MutationObserver(() => initCardHearts())
+      .observe(document.body, { childList: true, subtree: true });
   }
 
   if (document.readyState === 'loading') {
