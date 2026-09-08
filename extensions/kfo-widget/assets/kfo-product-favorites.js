@@ -22,6 +22,8 @@
     'ADD TO FAVORITE': 'TILFØJ TIL FAVORITTER',
     'ADDED TO FAVORITE': 'TILFØJET TIL FAVORITTER',
     'VIEW PRODUCT': 'SE PRODUKT',
+    'ADDED TO FAVORITE!': 'TILFØJET TIL FAVORITTER!',
+    'VIEW FAVORITES': 'SE FAVORITTER',
     'From': 'Fra',
     ' — Sold out': ' — Udsolgt',
     'Unavailable': 'Ikke tilgængelig',
@@ -60,6 +62,60 @@
     window.dispatchEvent(new CustomEvent('kfo:product-favorites-changed'));
   }
 
+  // --- "Added to favorite" toast (same design as the combinations widget) ---
+  let toastEl = null;
+  let toastTimer = null;
+  function favoritesUrl() {
+    return window.KFO_PRODUCT_FAVORITES_URL || '/pages/your-favorites-gallery';
+  }
+  function ensureToast() {
+    if (toastEl) return toastEl;
+    toastEl = document.createElement('div');
+    toastEl.className = 'kfo-toast';
+    toastEl.setAttribute('role', 'status');
+    toastEl.innerHTML = `
+      <div class="kfo-toast-thumb"></div>
+      <div class="kfo-toast-body">
+        <span class="kfo-toast-title">${kfoT('ADDED TO FAVORITE!')}</span>
+        <a class="kfo-toast-link" href="${favoritesUrl()}">${kfoT('VIEW FAVORITES')}</a>
+      </div>
+      <button class="kfo-toast-close" type="button" aria-label="Close">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 1.20857L10.7914 0L6 4.79143L1.20857 0L0 1.20857L4.79143 6L0 10.7914L1.20857 12L6 7.20857L10.7914 12L12 10.7914L7.20857 6L12 1.20857Z" fill="currentColor"/></svg>
+      </button>`;
+    document.body.appendChild(toastEl);
+    toastEl.querySelector('.kfo-toast-close').addEventListener('click', hideToast);
+    return toastEl;
+  }
+  function hideToast() {
+    clearTimeout(toastTimer);
+    toastEl?.classList.remove('kfo-toast--visible');
+  }
+  // Thumb image: prefer the mount's data-image (set by theme liquid); fall
+  // back to one fetch of the product JSON, cached per handle.
+  const productImgCache = {};
+  async function productImage(handle, provided) {
+    if (provided) return provided;
+    if (productImgCache[handle] !== undefined) return productImgCache[handle];
+    try {
+      const res = await fetch(`/products/${handle}.js`);
+      productImgCache[handle] = res.ok ? ((await res.json()).featured_image || '') : '';
+    } catch {
+      productImgCache[handle] = '';
+    }
+    return productImgCache[handle];
+  }
+  async function showFavoriteToast(handle, imageUrl) {
+    const el = ensureToast();
+    el.querySelector('.kfo-toast-thumb').innerHTML = '';
+    const img = await productImage(handle, imageUrl);
+    el.querySelector('.kfo-toast-thumb').innerHTML = img ? `<img src="${img}" alt="" />` : '';
+    // force reflow so re-triggering restarts the transition
+    void el.offsetWidth;
+    el.classList.add('kfo-toast--visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 4000);
+  }
+
   // --- Heart button block (product page) ---
   // Rendered as "♡ ADD TO FAVORITE" (outline heart + uppercase label), same
   // look as the combination modal's favorite button. The SVGs are the modal's
@@ -92,7 +148,10 @@
     }
     render();
 
-    btn.addEventListener('click', () => toggleFav(handle));
+    btn.addEventListener('click', () => {
+      toggleFav(handle);
+      if (isFav(handle)) showFavoriteToast(handle, root.dataset.image);
+    });
     window.addEventListener('kfo:product-favorites-changed', render);
   }
 
@@ -268,6 +327,7 @@
         e.preventDefault();
         e.stopPropagation();
         toggleFav(handle);
+        if (isFav(handle)) showFavoriteToast(handle, mount.dataset.image);
       });
       window.addEventListener('kfo:product-favorites-changed', render);
       mount.appendChild(btn);

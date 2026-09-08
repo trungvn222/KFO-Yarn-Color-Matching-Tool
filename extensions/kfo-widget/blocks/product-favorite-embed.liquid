@@ -18,6 +18,7 @@
 <script>
   window.KFO_HEART_URL = "{{ 'kfo-heart.svg' | asset_url }}";
   window.KFO_HEART_ACTIVE_URL = "{{ 'kfo-heart-active.svg' | asset_url }}";
+  window.KFO_PRODUCT_FAVORITES_URL = {{ block.settings.favorites_url | default: '/pages/your-favorites-gallery' | json }};
 </script>
 <style>
   .kfo-product-fav-btn{display:inline-flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;font-family:inherit;font-size:15px;letter-spacing:.08em;color:#111;text-transform:uppercase}
@@ -25,10 +26,26 @@
   .kfo-product-fav-heart{width:44px;height:44px;display:inline-flex;flex:none}
   .kfo-product-fav-heart svg{width:100%;height:100%;display:block}
   @media (max-width:768px){.kfo-product-fav-heart{width:40px;height:40px}}
-  .kfo-product-fav-mount{position:absolute;top:10px;right:10px;z-index:2}
-  .kfo-pcard-fav-btn{width:28px;height:28px;background:none;border:none;padding:0;cursor:pointer;display:block;transition:transform .1s}
-  .kfo-pcard-fav-btn:hover{transform:scale(1.15)}
-  .kfo-pcard-fav-btn img{width:100%;height:100%;display:block}
+  /* Collection-card overlay heart — exact copy of the combination card's
+     .kfo-heart-btn/.kfo-heart-icon spec so hearts look identical site-wide.
+     The icon size is !important because theme card styles (e.g. `.card img
+     { width: 100% }`) otherwise win the cascade and blow the 40px-intrinsic
+     SVG up to its natural size. */
+  .kfo-product-fav-mount{position:absolute;top:8px;right:8px;z-index:2;width:auto;line-height:0}
+  .kfo-product-fav-mount .kfo-pcard-fav-btn{width:26px;height:26px;background:none;border:none;padding:0;margin:0;cursor:pointer;transition:transform .1s;line-height:0;display:block;min-width:0;min-height:0}
+  .kfo-product-fav-mount .kfo-pcard-fav-btn:hover{transform:scale(1.15)}
+  .kfo-product-fav-mount .kfo-pcard-fav-btn img{width:100%!important;height:100%!important;max-width:none!important;display:block;margin:0}
+  @media (min-width:1025px){.kfo-product-fav-mount .kfo-pcard-fav-btn{width:40px;height:40px}}
+  /* Added-to-favorite toast — copy of the combinations widget's .kfo-toast. */
+  .kfo-toast{position:fixed;top:16px;right:16px;z-index:99999;display:flex;align-items:stretch;gap:24px;max-width:360px;padding:16px 20px 16px 16px;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.12);font-family:'Raleway',sans-serif;opacity:0;transform:translateX(24px);pointer-events:none;transition:opacity .25s ease,transform .25s ease}
+  .kfo-toast--visible{opacity:1;transform:none;pointer-events:auto}
+  .kfo-toast-thumb{width:96px;height:96px;flex-shrink:0;background:#f3f3f3;overflow:hidden}
+  .kfo-toast-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .kfo-toast-body{display:flex;flex-direction:column;justify-content:center;gap:12px;padding-right:12px}
+  .kfo-toast-title{font-size:14px;font-weight:600;letter-spacing:1.12px;text-transform:uppercase;color:#3d3a35}
+  .kfo-toast-link{align-self:flex-start;border:1px solid #3d3a35;padding:8px 16px;font-size:14px;font-weight:400;letter-spacing:2.1px;text-transform:uppercase;color:#3d3a35;text-decoration:none;transition:background .15s,color .15s}
+  .kfo-toast-link:hover{background:#3d3a35;color:#fff}
+  .kfo-toast-close{position:absolute;top:8px;right:8px;background:none;border:none;padding:4px;cursor:pointer;color:#6a6a6a;line-height:0}
 </style>
 <script src="{{ 'kfo-product-favorites.js' | asset_url }}" defer></script>
 
@@ -40,6 +57,13 @@
     {
       "type": "paragraph",
       "content": "Enables the product favorite heart on product pages. Add <div id=\"kfo-product-fav-btn\" data-handle=\"{{ product.handle }}\"></div> in the theme where the heart should appear."
+    },
+    {
+      "type": "text",
+      "id": "favorites_url",
+      "label": "Favorites page URL",
+      "default": "/pages/your-favorites-gallery",
+      "info": "Where the toast's VIEW FAVORITES button links to."
     },
     {
       "type": "select",
