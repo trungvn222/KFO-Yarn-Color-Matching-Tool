@@ -705,33 +705,26 @@
 .kfo-product-fav-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: none;
   border: none;
   cursor: pointer;
   padding: 0;
-  font-family: inherit;
-  font-size: 15px;
-  letter-spacing: 0.08em;
-  color: #111;
+  font-family: 'Raleway', sans-serif;
+  font-size: 14px;
+  line-height: 1.5em;
+  letter-spacing: 0.15em;
+  color: #3d3a35;
   text-transform: uppercase;
 }
 .kfo-product-fav-btn:hover {
   opacity: 0.7;
 }
-/* Same box as the modal's fav-button heart (44px desktop / 40px mobile) so
-   the heart renders the same visual size everywhere. */
 .kfo-product-fav-heart {
-  width: 44px;
-  height: 44px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   flex: none;
-}
-@media (max-width: 768px) {
-  .kfo-product-fav-heart {
-    width: 40px;
-    height: 40px;
-  }
 }
 .kfo-product-fav-heart svg {
   width: 100%;
